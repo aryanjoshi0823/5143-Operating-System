@@ -1,0 +1,10 @@
+# Ignore log files
+*.log
+
+# Ignore compiled Python files
+*.pyc
+
+.venv/
+
+# Ignore macOS .DS_Store files
+.DS_Store
