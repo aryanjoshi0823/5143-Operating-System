@@ -37,13 +37,13 @@ class _GetchWindows:
     
 
 
-if __name__=='__main__':
+# if __name__=='__main__':
 
-    getch = Getch()                             # create instance of our getch class
-    prompt = "%:"                               # set default prompt
+#     getch = Getch()                             # create instance of our getch class
+#     prompt = "%:"                               # set default prompt
 
 
-    while True:                             # loop forever
+#     while True:                             # loop forever
 
-        char = getch()   
-        print(char)
+#         char = getch()   
+#         print(char)
