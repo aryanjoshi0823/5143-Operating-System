@@ -1,5 +1,5 @@
-# cmd_pkg/echo.py
 
 
-def echo(message):
+
+def echo(**kwargs):
     return message
