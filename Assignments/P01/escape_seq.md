@@ -60,6 +60,33 @@ Here is a list of **typical terminal escape sequences** for key presses like arr
 - **Arrow keys** and **function keys** usually follow the pattern `\033[` or `\033O`.
 - **Control characters** typically start with `\x` followed by a specific value, representing the binary value of the control key.
 
-These escape sequences are often used when writing terminal-based applications or scripts that process keyboard inputs in the terminal.
+### Text Formatting:
 
-Let me know if you need more information!
+- **Bold Text:** \033[1m (Turns on bold text).
+- **Underline Text:** \033[4m (Turns on underlined text).
+- **Reset Formatting:** \033[0m (Resets all attributes to default).
+
+### Text Color:
+
+### Foreground Colors:
+
+- **Black:** `\033[30m`
+- **Red:** `\033[31m`
+- **Green:**`\033[32m`
+- **Yellow:** `\033[33m`
+- **Blue:** `\033[34m`
+- **Magenta:** `\033[35m`
+- **Cyan:**`\033[36m`
+- **White:** `\033[37m`
+-
+
+### Background Colors:
+
+- **Black:**`\033[40m`
+- **Red:** `\033[41m`
+- **Green:**`\033[42m`
+- **Yellow:** `\033[43m`
+- **Blue:** `\033[44m`
+- **Magenta:** `\033[45m`
+- **Cyan:** `\033[46m`
+- **White:** `\033[47m`

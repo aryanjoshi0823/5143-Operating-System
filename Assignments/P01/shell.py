@@ -9,6 +9,7 @@ from time import sleep
 # Dictionary to store the commands from cmd_pkg.
 loaded_cmds = {}
 command_history=[]
+prompt = "$" 
 
 
 # Dynamically load all functions from cmd_pkg into the dictionary cmd
@@ -41,33 +42,41 @@ def load_commands():
 #output with sys.stdout.flush(). This is essential for updating the command line 
 #in real-time without moving to a new line, which print() can't handle efficiently.
 
-def print_cmd(cmd):
-    #This function "cleans" off the command line, then prints
-    #whatever cmd that is passed to it to the bottom of the terminal.
+# def print_cmd(cmd):
+#     #This function "cleans" off the command line, then prints
+#     #whatever cmd that is passed to it to the bottom of the terminal.
     
-    terminal_length, _ = os.get_terminal_size()
+#     terminal_length, _ = os.get_terminal_size()
 
-    prompts= loaded_cmds.get('prompt') 
-    prompt_vlu = prompts()
+#     prompts= loaded_cmds.get('prompt') 
+#     prompt_vlu = prompts()
   
 
-    # Calculate the maximum width available for the command
-    cmd_max_length = terminal_length - len(prompt_vlu) - 2 # Reserve 2 characters for padding
+#     # Calculate the maximum width available for the command
+#     cmd_max_length = terminal_length - len(prompt_vlu) - 2 # Reserve 2 characters for padding
 
 
-    # # Check if the command is longer than the available width
-    if len(cmd) > cmd_max_length:
-        # Adjust the prompt width to accommodate the long command
-        prompt_vlu = prompt_vlu[:cmd_max_length - len(cmd) - 3] + "...$:"  # Truncate and add ellipsis
+#     # # Check if the command is longer than the available width
+#     if len(cmd) > cmd_max_length:
+#         # Adjust the prompt width to accommodate the long command
+#         prompt_vlu = prompt_vlu[:cmd_max_length - len(cmd) - 3] + "...$:"  # Truncate and add ellipsis
 
 
-    padding = " " * (terminal_length - len(prompt_vlu) - len(cmd) - 1)
+#     padding = " " * (terminal_length - len(prompt_vlu) - len(cmd) - 1)
 
-    sys.stdout.flush()
-    sys.stdout.write("\r" + padding)
-    sys.stdout.write("\r" + prompt_vlu + cmd)
-    sys.stdout.flush()
+#     sys.stdout.flush()
+#     sys.stdout.write("\r" + padding)
+#     sys.stdout.write("\r" + prompt_vlu + cmd)
+#     sys.stdout.flush()
     
+def print_cmd(cmd):
+    """This function "cleans" off the command line, then prints
+    whatever cmd that is passed to it to the bottom of the terminal.
+    """
+    padding = " " * 80
+    sys.stdout.write("\r" + padding)
+    sys.stdout.write("\r" + prompt + cmd)
+    sys.stdout.flush()
 
 
 if __name__ == "__main__":
