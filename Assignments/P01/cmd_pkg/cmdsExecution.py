@@ -1,5 +1,5 @@
 import os
-from cmd_pkg.history import add_commands_to_history, show_history, commands_history
+from cmd_pkg.history import add_commands_to_history, history, commands_history
 
 def execute_cmds(cmds):
     "Execute given commands and return the output"

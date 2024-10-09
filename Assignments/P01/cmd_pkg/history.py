@@ -17,7 +17,7 @@ def add_commands_to_history(commands, flags):
      # Returns the updated history and the index of the last added command
     return commands_history, (len(commands_history)-1)
 
-def show_history(**kwargs):
+def history(**kwargs):
     """Display history of command executed in current session."""
     cmds_logger = CmdsLogger()
 

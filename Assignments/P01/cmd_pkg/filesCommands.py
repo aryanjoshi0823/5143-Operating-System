@@ -5,6 +5,7 @@ import sys
 import shutil
 from cmd_pkg.cmdsLogger import CmdsLogger
 from cmd_pkg.getch import Getch
+import traceback
 
 getch = Getch()
 
@@ -109,7 +110,7 @@ def head(**kwargs):
 
         except Exception as e:
             print(f"\n An error occurred: {e}")
-            print(traceback.format_exc()) 
+           
     finally:
         sys.stdout = sys.__stdout__    
 
@@ -246,14 +247,42 @@ def mv(**kwargs):
     try:
         if kwargs["params"] != []:
             try:
-                pass
+                params_values  = kwargs["params"]
+                count_params_value = len(params_values)
+
+                if count_params_value == 1:
+                    print(f"\ncp: missing file operand\nTry 'cp --help' for more information.")
+
+                elif count_params_value == 2:
+                    first_param = params_values[0]
+                    second_param = params_values[1]
+
+                    #shutil.move(file1, file2) moves a file or directory from file1 to file2.
+                    #If file2 is a directory, file1 is moved into it.
+                    #If file2 is a file, file1 replaces file2.
+                    shutil.move(first_param, second_param)
+
+                elif count_params_value > 1:
+                    destination = params_values[-1]
+                    if os.path.isdir(destination):
+                        for filename in kwargs["params"][:-1]:
+                            if os.path.isfile(filename):
+                                shutil.move(filename, destination)
+                            else:
+                                raise Exception(f"mv: cannot stat '{filename}': No such file or directory")
+                    else:
+                        raise Exception(f"mv: target '{destination}' is not a directory")
+                    
+                elif kwargs["params"] == [] and kwargs["input"] != '':
+                    # this block is used Incase an Input is received from a pipe
+                    pass
 
             except FileNotFoundError:
-                print(f"\nFile not found: {filename}")
-                print(f"\mv: cannot open '{filename}' for reading: No such file or directory")
+                print(f"\nmv: cannot open '{second_param}' for reading: No such file or directory")
 
             except Exception as e:
                 print(f"\n An error occurred: {e}")
+                print(traceback.format_exc()) 
         else:
             print(f"\nmv: missing file operand\nTry 'mv --help' for more information.")
 
@@ -263,3 +292,83 @@ def mv(**kwargs):
 
     captured_output = "".join(cmds_logger.log_content)
     return captured_output
+
+def cp(**kwargs):
+    cmds_logger = CmdsLogger
+    sys.stdout = cmds_logger
+
+    try:
+        if kwargs["params"] != []:
+            try:
+                params_value = kwargs["params"]
+                count_params_value = len(kwargs["params"])
+
+                if count_params_value == 1: 
+                    print(f"\ncp: missing file operand\nTry 'cp --help' for more information.")
+
+                elif count_params_value == 2:
+                    first_params = params_value[0]
+                    second_params = params_value[1]
+
+                    shutil.copytree(first_params, second_params) if kwargs["flags"] in ('r','R') else shutil.copy(first_params, second_params)
+
+                elif count_params_value > 2:
+                    destination = params_value[-1]
+                    if os.path.isdir(destination):
+                        for filename in kwargs["params"][-1]:
+                            if os.path.isfile(filename):
+                                shutil.copy(filename, destination)
+                            else:
+                                raise Exception( f"cp: cannot stat '{filename}': No such file or directory")
+                    else:
+                        raise Exception(f"cp: cannot stat '{filename}': No such file or directory")
+                    
+                            
+                elif kwargs["params"] == [] and kwargs["input"] != '':
+                    # this block is used Incase an Input is received from a pipe
+                    pass
+            
+            except FileNotFoundError:
+                print(
+                    f"\ncp: cannot open '{second_params}' for reading: No such file or directory")
+                
+            except Exception as e:
+                print(f"An error occurred: {e}")
+
+        else:
+            print(f"\ncp: missing file operand\nTry 'cp --help' for more information.")
+
+
+    finally:
+       sys.stdout = sys. __stdout__
+
+    captured_output = "".join(cmds_logger.log_content)
+    return captured_output
+
+
+def rm(**kwargs):
+    try:
+        if kwargs["params"] != []:
+            try:
+                for filename in kwargs["params"]:
+                    # Check if it's a directory or a file
+                    if os.path.isdir(filename):
+                        # Use rmtree for directories
+                        shutil.rmtree(filename) if kwargs["flags"] in ('r', 'R', 'rf', 'fr') else print(f"rm: cannot remove '{filename}': Is a directory")
+                    elif os.path.isfile(filename):
+                        # Use os.remove for files
+                        os.remove(filename)
+                    else:
+                        print(f"rm: cannot remove '{filename}': No such file or directory")
+            except Exception as e:
+                print(f"An error occurred: {e}")
+        elif kwargs["params"] == [] and kwargs["input"] != '':
+            filename = kwargs["input"].splitlines()[1]
+            os.remove(filename)
+        else:
+            print(f"\nrm: missing file operand.\nTry 'rm --help' for more information.")
+
+    except FileNotFoundError:
+        print(f"\rrm:'{filename}' No such file or directory")
+    except Exception as e:
+        print(f"\rAn error occurred: {e}.\nTry 'rm --help' for more information.")

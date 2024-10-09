@@ -5,4 +5,5 @@ class CmdsLogger:
         self.log_content = [] # To capture message.
 
     def write(self, msg):
-        self.log_content.append(msg) # Appending message to above list.
+        if msg:
+            self.log_content.append(msg) # Appending message to above list.
