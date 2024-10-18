@@ -1,0 +1,9 @@
+rich
+fastapi
+pydantic
+Pygments
+requests
+uvicorn
+prettytable
+datetime
+
