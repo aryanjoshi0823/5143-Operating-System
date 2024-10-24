@@ -1,44 +1,68 @@
-import sys
-import os
-from cmd_pkg.cmdsLogger import CmdsLogger 
+from helper_files.api_call import get_directory_id
+from helper_files.utils import load_config, save_config
+
+def normalize_path(path, current_dir):
+    # Split the path into components
+    components = path.split('/')
+    result_path = current_dir.split('/') if current_dir else []
+
+    for part in components:
+        if part == '..':
+            if result_path:
+                result_path.pop()  # Go to the parent directory
+        elif part == '.' or part == '':
+            continue  
+        else:
+            result_path.append(part) 
+
+    # Join the result path to create the final normalized path
+    normalized_path = '/'.join(result_path)
+    if not normalized_path.startswith('/'):
+        normalized_path = '/' + normalized_path  # check it's absolute
+    return normalized_path
 
 def cd(**kwargs):
-    cmds_Logger = CmdsLogger()
-    sys.stdout = cmds_Logger
 
-    try:
-        input = kwargs["input"] if kwargs.get("input") else []
-        params = kwargs["params"] if kwargs.get("params") else []
-        flags = kwargs["flags"] if kwargs.get("flags") else []
+    params = kwargs["params"] if kwargs.get("params") else []
+    flags = kwargs["flags"] if kwargs.get("flags") else []
+    config = load_config()
 
-        print('\r')
+    print('\r')
 
-        if params:
+    if params:
+        try: 
             for param in params:
-                try: 
-                    param = param.replace("'", "").replace('"', "")
-                    if param.startswith('~'):
-                        os.chdir(os.path.expanduser("~"))
-                    elif param == "..":
-                        os.chdir("..")
+                param = param.replace("'", "").replace('"', "")
+                dir_res = get_directory_id(param,config['cwdid'])
+
+                if dir_res["status_code"] == '200' and dir_res["data"] is not None:
+                    if dir_res["data"] == 0:
+                        config["cwd"] = ""
+                        config["cwdid"] = dir_res["data"] 
+                        config["root_or_home"] = "/"
+
+                    elif dir_res["data"] == 1:
+                        config["cwd"] = ""
+                        config["cwdid"] = dir_res["data"] 
+                        config["root_or_home"] = "~" 
+
                     else:
-                        os.chdir(param)
+                        normalized_path = normalize_path(param, config["cwd"])
 
-                    print(f"Changed to directory: {os.getcwd()}")
+                        config["cwd"] = normalized_path
+                        config["cwdid"] = dir_res["data"]
 
-                except FileNotFoundError:
-                    print(f"Error: Directory '{param}' not found.")
-                except PermissionError:
-                    print(f"Error: Permission denied for directory '{param}'.")
-                except Exception as e:
-                    print(f"Error: {e}")
-        else:
-            os.chdir(os.path.expanduser("~"))  # Change to the home directory
-            print(f"Changed to directory: {os.getcwd()}")
+                        # Handle paths starting with ~ or /
+                        if param.startswith("~/"):
+                            config["root_or_home"] = "~"
+                            config["cwd"] = config["cwd"].replace("~/", "") 
+                            
+                    save_config(config)
 
-    finally:
-        sys.stdout = sys.__stdout__
+                else:
+                    print(dir_res['message'])
 
-    captured_output = ''.join(cmds_Logger.log_content)
-    return captured_output
+        except Exception as e:
+            print(f"Error: {e}")
+
 

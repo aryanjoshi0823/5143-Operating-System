@@ -290,7 +290,7 @@ class SqliteCRUD:
             print(f"Error reading data: {e}")
             return self.__buildResponse(query, False, f"Error executing query: {e}", [])
 
-    def readData(self, table_name, optional_id = None):
+    def readTableDataByPid(self, table_name, optional_id = None):
         """Read data from a table, optionally filtered by id.
         
         Args:
@@ -307,7 +307,7 @@ class SqliteCRUD:
         except sqlite3.Error as e:
             return self.__buildResponse(query, False, f"Error reading data {e}", [])
 
-    def readFile(self, file_name, pid):
+    def readFileByPid(self, file_name, pid):
         """read file from files table.
         
         Args:
@@ -317,6 +317,20 @@ class SqliteCRUD:
         try:
             query = "SELECT * FROM files WHERE name = ? AND pid = ?"
             return self.__runQuery(query, "all" , (file_name, pid))
+        
+        except sqlite3.Error as e:
+            return self.__buildResponse(query, False, f"Error reading data {e}", [])
+
+    def readDirectoriesByPid(self, dir_name, pid):
+        """read directory data from Directories table.
+        
+        Args:
+            dir_name (str): Name of the file.
+            pid (int): ID to use in the WHERE clause.
+        """
+        try:
+            query = "SELECT * FROM directories WHERE name = ? AND pid = ?"
+            return self.__runQuery(query, "all" , (dir_name, pid))
         
         except sqlite3.Error as e:
             return self.__buildResponse(query, False, f"Error reading data {e}", [])
@@ -334,36 +348,6 @@ class SqliteCRUD:
         except sqlite3.Error as e:
             return self.__buildResponse(query, False, f"Error reading data {e}", [])
         
-    def  getDirectoryId(self, dir_name, pid):
-        """get directory id from directories table.
-        
-        Args:
-            dir_name (str): Name of the directory.
-            pid (int): ID to use in the WHERE clause.
-        """
-
-        print("dir-->",dir_name[0])
-        try:
-            query = f"SELECT id FROM directories WHERE name = '{dir_name[0]}' AND pid = '{pid}'"
-            return self.__runQuery(query, "all")
-        
-        except sqlite3.Error as e:
-            return self.__buildResponse(query, False, f"Error reading data {e}", [])
-   
-    def readDirectories(self, dir_name, pid):
-        """read directory data from Directories table.
-        
-        Args:
-            dir_name (str): Name of the file.
-            pid (int): ID to use in the WHERE clause.
-        """
-        try:
-            query = "SELECT * FROM directories WHERE name = ? AND pid = ?"
-            return self.__runQuery(query, "all" , (dir_name, pid))
-        
-        except sqlite3.Error as e:
-            return self.__buildResponse(query, False, f"Error reading data {e}", [])
-   
     def readDirectoryById(self, id):
         """read directory record by id 
         
@@ -377,6 +361,39 @@ class SqliteCRUD:
         except sqlite3.Error as e:
             return self.__buildResponse(query, False, f"Error reading data {e}", [])
         
+    def  getDirectoryId(self, dir_name, pid):
+        """get directory id from directories table.
+        
+        Args:
+            dir_name (str): Name of the directory.
+            pid (int): ID to use in the WHERE clause.
+        """
+        try:
+            query = f"SELECT id FROM directories WHERE name = '{dir_name[0]}' AND pid = '{pid}'"
+            return self.__runQuery(query, "all")
+        
+        except sqlite3.Error as e:
+            return self.__buildResponse(query, False, f"Error reading data {e}", [])
+   
+    def readDirContentByPid(self, id: int):
+        try:
+            query = """
+                SELECT id, pid, oid, name, size, created_at, modified_at, read_permission, write_permission, execute_permission, 
+                        world_read, world_write, world_execute,'file' AS type  
+                FROM files WHERE pid = ?
+
+                UNION ALL
+        
+                SELECT id, pid, oid, name, NULL AS size, created_at, modified_at, read_permission, write_permission, execute_permission, 
+                    world_read, world_write, world_execute,'directory' AS type 
+                FROM directories WHERE pid = ?
+            """
+            return self.__runQuery(query, "all" , (id,id))
+        
+        except sqlite3.Error as e:
+            return self.__buildResponse(query, False, f"Error reading data {e}", [])
+        
+
     def updateData(self, table_name, target, new_value, where_column, where_value):
         """
         Description:
@@ -393,15 +410,15 @@ class SqliteCRUD:
         query = f'UPDATE "{table_name}" SET {target} = "{new_value}" WHERE "{where_column}" = "{where_value}";'
         return self.__runQuery(query, None)
 
-    def getFilePermission(self, name, pid):
+    def getFilePermission(self, name, id):
         try:
             query = """
                 SELECT read_permission, write_permission, execute_permission, 
                     world_read, world_write, world_execute 
                 FROM files 
-                WHERE name = ? AND pid = ?
+                WHERE name = ? AND id = ?
                 """
-            return self.__runQuery(query, "all" , (name, pid))
+            return self.__runQuery(query, "all" ,(name, id))
             
         except sqlite3.Error as e:
             return self.__buildResponse(query, False, f"Error reading data {e}", [])
@@ -412,16 +429,39 @@ class SqliteCRUD:
                 UPDATE files 
                 SET read_permission = ?, write_permission = ?, execute_permission = ?, 
                     world_read = ?, world_write = ?, world_execute = ?
-                WHERE name = ? AND pid = ?
+                WHERE name = ? AND id = ?
                 """
             return self.__runQuery(query, "all" , (r, w, e, wr, ww, we, name, pid))
         
         except sqlite3.Error as err:
             return self.__buildResponse(query, False, f"Error reading data {err}", [])
+
+    def getDirPermission(self, name, id):
+        try:
+            query = """
+                SELECT read_permission, write_permission, execute_permission, 
+                    world_read, world_write, world_execute 
+                FROM directories 
+                WHERE name = ? AND id = ?
+                """
+            return self.__runQuery(query, "all" ,(name, id))
             
+        except sqlite3.Error as e:
+            return self.__buildResponse(query, False, f"Error reading data {e}", [])
         
-
-
+    def updateDirPermission(self, name, pid, r, w, e, wr, ww, we):
+        try:
+            query = """
+                UPDATE directories 
+                SET read_permission = ?, write_permission = ?, execute_permission = ?, 
+                    world_read = ?, world_write = ?, world_execute = ?
+                WHERE name = ? AND id = ?
+                """
+            return self.__runQuery(query, "all" , (r, w, e, wr, ww, we, name, pid))
+        
+        except sqlite3.Error as err:
+            return self.__buildResponse(query, False, f"Error reading data {err}", [])
+    
     def deleteData(self, table_name, condition_column, condition_value):
         """
         Description:
@@ -458,4 +498,5 @@ class SqliteCRUD:
     def closeConnection(self):
         """Close the database connection."""
         self.conn.close()
+
 

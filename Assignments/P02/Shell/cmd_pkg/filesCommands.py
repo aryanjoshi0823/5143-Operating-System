@@ -1,374 +1,319 @@
-
-import os
-import traceback
-import sys
-import shutil
-from cmd_pkg.cmdsLogger import CmdsLogger
-from cmd_pkg.getch import Getch
-import traceback
-
-getch = Getch()
-
-# commmands to be executed 
-# mv pm.txt bana
-# cp /home/jarvis/Documents/others/test1.txt /home/jarvis/Documents/others/test_dir
-# rm -rf bana
-# cat write.txt
-# less test.py
-# head -n 10 abc.txt
-# tail -n 10 abc.txt
-# touch <filename>
+from helper_files.api_call import *
+from helper_files.utils import *
 
 def cat(**kwargs):
+    #/python_code/MyRTree/RTree2.py
+    #state-fips.csv
+    config = load_config()
 
-    cmds_logger = CmdsLogger()
-    sys.stdout = cmds_logger
-
+    input = kwargs["input"] if kwargs.get("input") else []
+    params = kwargs["params"] if kwargs.get("params") else []
+    flags = kwargs["flags"] if kwargs.get("flags") else []
+    
     try:
-        try:
-            if kwargs["input"] != "" and kwargs["params"] == []:
-                filename = kwargs["input"].splitlines()[1]
-                print(filename)
-            elif kwargs["params"] != []:
-                for filename in kwargs["params"]:
-                    print("\r")
-                    print('filename',filename)
-                    with open (filename, "r") as file:
-                        each_line = file.readline()[:] 
+        if input:
+            filename = input.splitlines()[1]
+            print(filename)
+            return(str(filename))
 
-                        for items in each_line:
-                            print(items, end="")
-            else:
-                 print(
-                    f"\ncat: missing file operand.\nTry 'cat --help' for more information.")
-                 
-        except Exception as e:
-            print(f"\n An error occurred: {e}")
-    finally:
-        sys.stdout = sys.__stdout__    
+        elif params:
 
-    captured_output = "".join(cmds_logger.log_content)
-    return captured_output
+            cat_output = ""
+            name = ""
+
+            for param in params:
+                parts = param.split("/")[-1]
+                name = name + " "+ parts 
+
+                param = param.replace("'", "").replace('"', "")
+                rd = read_file_data(param,config['cwdid'])
+
+                if rd["status_code"] == '200' and rd["data"] is not None:
+                    cat_output += rd["data"]
+                else:
+                    print(f"{rd["message"]}")
+
+            print("filename",name)
+            print(cat_output)
+            return(str(cat_output))
+
+        else:
+            print(
+            f"\ncat: missing file operand.\nTry 'cat --help' for more information.")
+                
+    except Exception as e:
+        print(f"\n An error occurred: {e}")
 
 def head(**kwargs):
+    #/python_code/MyRTree/RTree2.py
+    #state-fips.csv
+    config = load_config()
 
-    cmds_logger = CmdsLogger()
-    sys.stdout = cmds_logger
+    input = kwargs["input"] if kwargs.get("input") else []
+    params = kwargs["params"] if kwargs.get("params") else []
+    flags = kwargs["flags"] if kwargs.get("flags") else []
 
     count = 0
     length = 0
     begin = 0
 
+
     try:
-        try:
-            # Determines the number of lines (length) to print and where to start 
-            # reading files based on the presence or absence of flags and parameters.
+        # Determines the number of lines (length) to print and where to start 
+        # reading files based on the presence or absence of flags and parameters.
 
-            if kwargs["flags"] == "":
-                length = 5  # no flags mentioned print first 5 line.
-                count = 0
-            elif kwargs["flags"] == "n" and len(kwargs["params"]) > 0:
-                #If the flag is "n" and parameters are provided, 
-                # it sets the number of lines based on the first
-                #  parameter and skips it in further processing.
+        if flags == []:
+            length = 10  # no flags mentioned print first 10 line.
+            count = 0
 
-                length = int(kwargs["params"][0])  # get the flag value like -n 10  <--
-                begin = 1  # to skip number of lines flag value like -n 10 while looping
-            elif kwargs["flags"] == "n" and kwargs["params"] == []:
-                raise Exception(f"head: invalid trailing option -- 1.\nTry 'head --help' for more information.")
+        elif flags[0] == "n" and len(params) > 0:
+            #If the flag is "n" and parameters are provided, 
+            # it sets the number of lines based on the first
+            #  parameter and skips it in further processing.
+            length = int(params[0]) # get the flag value like -n 10
+            begin = 1 
+
+        elif flags[0] == "n" and params == []:
+            raise Exception(f"Try 'head --help' for more information.")
+
+        if params and input == []:
+            # count  = 0, length = 10 if flag = "", 
+            count = len(params) 
+
+            # looping as many items as items in params, if flag is [10, xyz, qwe] 
+            # there begin = 1 to count ,  else begin = 0
+            vlu_str = ""
+            for i in range(begin, count):
+
+                filename = params[i].strip() 
+                rfd = read_file_data(params[i],config['cwdid'])
+
+                if rfd["status_code"] == '200' and rfd["data"] is not None:
+                    file_parts = filename.split("/")
+                    file_name = file_parts[-1]
+
+                    print("==> ",file_name," <==")
+
+                    data = rfd["data"].splitlines()
+                    for line in data[:length]:
+                        print(line)
+                        vlu_str = vlu_str+"\n"+line
+                else:
+                    print(rfd["message"])
+            return(str(vlu_str))
+        
+        elif input:
+
+            filename = input.splitlines()[1]
+            value = ""
+            for line in filename[:length]:
+                value = value+"\n"+line
+                print(line)
+            return(str(value))
 
 
-            if kwargs["params"] != [] and kwargs["input"].strip() == "":
-                # length of total number of item in params, but if flag not mentioned it is set to count  = 0, length = 5 previously, 
-                count = len(kwargs["params"]) 
-                for i in range(begin, count): # looping as many items as items in params, if flag is there begin = 1, else begin = 0, count = 0
-                    filename = kwargs["params"][i].strip() #
-                    if os.path.isfile(filename):
-                        print("==> ",filename," <==")
-                    with open(filename, 'r') as file:
-                        lines = file.readlines()[:length]
-                    # print lines to console
-                    for line in lines:
-                        print(line, end='')
-                    print("\r")
 
-            elif kwargs["input"] != "":
-                filename = kwargs["input"].splitlines()[1]
-                if os.path.isfile(filename):
-                    print("==> ",filename," <==")                
-                with open(filename, 'r') as file:
-                    lines = file.readlines()[:length]
-                    # print lines to console
-                    for line in lines:
-                        print(line, end='')
-            else:
-                print( f"\nhead: invalid trailing option -- 1.\n Try 'head --help' for more information.")
-                 
-        except FileNotFoundError:
-            print(f"\nFile not found: {filename}")
-            print(f"\rhead: cannot open '{filename}' for reading: No such file or directory")
-
-        except Exception as e:
-            print(f"\n An error occurred: {e}")
+                
+    except Exception as e:
+        print(f"\n An error occurred: {e}")
            
-    finally:
-        sys.stdout = sys.__stdout__    
-
-    captured_output = "".join(cmds_logger.log_content)
-    return captured_output
-
 def tail(**kwargs):
+    #/python_code/MyRTree/RTree2.py
+    #state-fips.csv
+    config = load_config()
 
-    cmds_logger = CmdsLogger()
-    sys.stdout = cmds_logger
+    input = kwargs["input"] if kwargs.get("input") else []
+    params = kwargs["params"] if kwargs.get("params") else []
+    flags = kwargs["flags"] if kwargs.get("flags") else []
 
     count = 0
     length = 0
     begin = 0
 
     try:
-        try:
-            # Determines the number of lines (length) to print and where to start 
-            # reading files based on the presence or absence of flags and parameters.
+        # Determines the number of lines (length) to print and where to start 
+        # reading files based on the presence or absence of flags and parameters.
 
-            if kwargs["flags"] == "":
-                length = 5  # no flags mentioned print first 5 line.
-                count = 0
-            elif kwargs["flags"] == "n" and len(kwargs["params"]) > 0:
-                #If the flag is "n" and parameters are provided, 
-                # it sets the number of lines based on the first
-                #  parameter and skips it in further processing.
+        if flags == []:
+            length = 10  
+            count = 0
 
-                length = int(kwargs["params"][0])  # get the flag value like -n 10  <--
-                begin = 1  # to skip number of lines flag value like -n 10 while looping
-            elif kwargs["flags"] == "n" and kwargs["params"] == []:
-                raise Exception(f"tail: invalid trailing option -- 1.\nTry 'tail --help' for more information.")
+        elif flags[0] == "n" and len(params) > 0:
 
+            #If the flag is "n" and parameters are provided, 
+            # it sets the number of lines based on the first
+            #  parameter and skips it in further processing.
 
-            if kwargs["params"] != [] and kwargs["input"].strip() == "":
-                # length of total number of item in params, but if flag not mentioned it is set to count  = 0, length = 5 previously, 
-                count = len(kwargs["params"]) 
-                for i in range(begin, count): # looping as many items as items in params, if flag is there  then begin = 1, else begin = 0, count = 0
-                    filename = kwargs["params"][i].strip() 
-                    if os.path.isfile(filename):
-                        print("==> ",filename," <==")
-                    with open(filename, 'r') as file:
-                        lines = file.readlines()
-                    total_lines_count = len(open(filename).readlines())
+            length = int(params[0])  
+            begin = 1  
+
+        elif flags[0] == "n" and params == []:
+            raise Exception(f"tail: invalid trailing option -- 1.\nTry 'tail --help' for more information.")
+
+        if params and input == []:
+
+            count = len(params) 
+            for i in range(begin, count): 
+
+                filename = params[i].strip() 
+                rfd = read_file_data(params[i],config['cwdid'])
+
+                if rfd["status_code"] == '200' and rfd["data"] is not None:
+                    file_parts = filename.split("/")
+                    file_name = file_parts[-1]
+
+                    print("==> ",file_name," <==")
+
+                    data = rfd["data"].splitlines()
+                    total_lines_count = len(data)
+                    print(total_lines_count)
+
                     length = 2 if total_lines_count < 5 else length
-                    for i in range(total_lines_count - length , total_lines_count):
-                        print(lines[i], end='')
-                    print("\r")
+                    for i in range(total_lines_count - length, total_lines_count):
+                        print(data[i])
+                else:
+                    print(rfd["message"])
 
-            elif kwargs["input"] != "":
-                filename = kwargs["input"].splitlines()[1]
-                if os.path.isfile(filename):
-                    print("==> ",filename," <==")                
-                with open(filename, 'r') as file:
-                    lines = file.readlines()
-                tot_lines = len(open(filename).readlines())
-                length = 5 if kwargs["flags"] == "" else length
-                for i in range(tot_lines - length , tot_lines):
-                    print(lines[i], end='')
-            else:
-                print( f"\nhead: invalid trailing option -- 1.\n Try 'head --help' for more information.")
-                 
-        except FileNotFoundError:
-            print(f"\nFile not found: {filename}")
-            print(f"\rhead: cannot open '{filename}' for reading: No such file or directory")
+        elif input:
 
-        except Exception as e:
-            print(f"\n An error occurred: {e}")
-            print(traceback.format_exc()) 
-    finally:
-        sys.stdout = sys.__stdout__    
+            filename = input.splitlines()[1]
+            value = ""
 
-    captured_output = "".join(cmds_logger.log_content)
-    return captured_output
+            for line in filename[:length]:
+                pass
+            total_lines_count = len(filename)
 
+            length = 2 if total_lines_count < 5 else length
+            for i in range(total_lines_count - length, total_lines_count):
+                value = value+"\n"+line
+                print(data[i])
+                
+            return(str(value))
+
+        else:
+            print( f"\n tail: parameter is needed.")
+
+    except Exception as e:
+        print(f"\n An error occurred: {e}")
+ 
 def touch(**kwargs):
-    cmds_logger = CmdsLogger()
-    sys.stdout = cmds_logger
+        input = kwargs["input"] if kwargs.get("input") else []
+        params = kwargs["params"] if kwargs.get("params") else []
+        flags = kwargs["flags"] if kwargs.get("flags") else []
 
-    try:
-        if kwargs["params"] != []:
+        config = load_config()
+        if params:
             try:
-                for filename in kwargs["params"]:
-                    if filename != "&&" and not os.path.isfile("filename"):
-                        open(filename, 'w').close()
+                for param in params:
+                    param = param.replace("'", "").replace('"', "")
+                    mk_file_res = make_file(param,config['cwdid'])
+                    if mk_file_res["status_code"] == '200' and mk_file_res["data"] is not None:
+                        print("Files Created.")
+                    else:
+                        print(f"{mk_file_res["message"]}")
             except Exception as e:
-                print(f"\nAn error occurred: {e}")
+                print(f"\n Error: {e}")
 
-        elif kwargs["params"] == [] and kwargs["input"] != []:
+        elif params == [] and input:
             # block for handling input from other command when using pipe
             pass
-    finally:
-        sys.stdout = sys.__stdout__   # Restore the original stdout
-    captured_output = "".join(cmds_logger.log_content)
-    return captured_output
 
 def less(**kwargs):
+     #/python_code/MyRTree/RTree2.py
+    #state-fips.csv
 
+    config = load_config()
+    params = kwargs["params"] if kwargs.get("params") else []
     try:
-        if kwargs["params"] != []:
-            filename = kwargs["params"][0]
-            with open (filename, "r") as file:
-                lines = file.readlines()
-            temp_content = " "
-            each_pg_size = 3 # displayed lines
-            curr_line = 0
-            print("\n")
+        if params:
+            filename = params[0]
+            filename = filename.replace("'", "").replace('"', "")
 
-            while True:
-                # Display the current page of lines
-                for i in range(curr_line, min(curr_line + each_pg_size, len(lines))):
-                    print(lines[i], end="")
+            rd = read_file_data(filename, config['cwdid'])
+
+            if rd["status_code"] == '200' and rd["data"] is not None:
+
+                lines = rd["data"].splitlines()
+                each_pg_size = 10
+                curr_line = 0
+
+                print("\n")
+
+                while True:
+                    # Display the current page of lines
+                    for i in range(curr_line, min(curr_line + each_pg_size, len(lines))):
+                        print(lines[i], end="\n")
 
 
-                # Asking the user to continue or quit
-                user_input_value = input(
-                    "Press 'q' to quit, 'n' for the next page: ")
-                if user_input_value.lower() == "q":
-                    break
-                elif user_input_value.lower() == "n":
-                    curr_line += each_pg_size
-                    if curr_line >= len(lines):
+                    # Asking the user to continue or quit
+                    user_input_value = input(
+                        "\n Press 'q' to quit, 'n' for the next page: ")
+                    if user_input_value.lower() == "q":
                         break
+                    elif user_input_value.lower() == "n":
+                        curr_line += each_pg_size
+                        if curr_line >= len(lines):
+                            print("\nEnd of content.")
+                            break
+            else:
+                print(f"{rd["message"]}")
         else:
-            print(f"\nless: invalid trailing option -- 1.\nTry 'less --help' for more information.")
-    except FileNotFoundError:
-        print(f"\rless: cannot open '{filename}' for reading: No such file or directory")
+            print(f"\nless: --help' for more information.")
     except Exception as e:
         print(f"\rAn error occurred: {e}.\nTry 'less --help' for more information.")
 
 def mv(**kwargs):
-    cmds_logger = CmdsLogger()
-    sys.stdout = cmds_logger
-    try:
-        if kwargs["params"] != []:
-            try:
-                params_values  = kwargs["params"]
-                count_params_value = len(params_values)
+    input = kwargs["input"] if kwargs.get("input") else []
+    params = kwargs["params"] if kwargs.get("params") else []
+    flags = kwargs["flags"] if kwargs.get("flags") else []
 
-                if count_params_value == 1:
-                    print(f"\ncp: missing file operand\nTry 'cp --help' for more information.")
+    print("params-->",params)
+    config = load_config()
 
-                elif count_params_value == 2:
-                    first_param = params_values[0]
-                    second_param = params_values[1]
+    rfd = mv_file(params[0].strip(),params[1].strip(),config['cwdid'])
+    print("rfd--->",rfd)
+    if rfd["status_code"] == '200' and rfd["data"] is not None:
+        print("File moved.")
 
-                    #shutil.move(file1, file2) moves a file or directory from file1 to file2.
-                    #If file2 is a directory, file1 is moved into it.
-                    #If file2 is a file, file1 replaces file2.
-                    shutil.move(first_param, second_param)
-
-                elif count_params_value > 1:
-                    destination = params_values[-1]
-                    if os.path.isdir(destination):
-                        for filename in kwargs["params"][:-1]:
-                            if os.path.isfile(filename):
-                                shutil.move(filename, destination)
-                            else:
-                                raise Exception(f"mv: cannot stat '{filename}': No such file or directory")
-                    else:
-                        raise Exception(f"mv: target '{destination}' is not a directory")
-                    
-                elif kwargs["params"] == [] and kwargs["input"] != '':
-                    # this block is used Incase an Input is received from a pipe
-                    pass
-
-            except FileNotFoundError:
-                print(f"\nmv: cannot open '{second_param}' for reading: No such file or directory")
-
-            except Exception as e:
-                print(f"\n An error occurred: {e}")
-                print(traceback.format_exc()) 
-        else:
-            print(f"\nmv: missing file operand\nTry 'mv --help' for more information.")
-
-    finally:
-        sys.stdout = sys.__stdout__    
-
-
-    captured_output = "".join(cmds_logger.log_content)
-    return captured_output
+    elif rfd["status_code"] == '404':
+        rename = rename_file(params[0].strip(),params[1].strip(),config['cwdid'])
+        print("rename-->",rename)
+        print(rename["message"]) 
+        if rename["status_code"] == '200' and rename["data"] is not None:
+            print("File renamed.")                       
 
 def cp(**kwargs):
-    cmds_logger = CmdsLogger
-    sys.stdout = cmds_logger
+
+    input = kwargs["input"] if kwargs.get("input") else []
+    params = kwargs["params"] if kwargs.get("params") else []
+    flags = kwargs["flags"] if kwargs.get("flags") else []
+
+    config = load_config()
 
     try:
-        if kwargs["params"] != []:
-            try:
-                params_value = kwargs["params"]
-                count_params_value = len(kwargs["params"])
-
-                if count_params_value == 1: 
-                    print(f"\ncp: missing file operand\nTry 'cp --help' for more information.")
-
-                elif count_params_value == 2:
-                    first_params = params_value[0]
-                    second_params = params_value[1]
-
-                    shutil.copytree(first_params, second_params) if kwargs["flags"] in ('r','R') else shutil.copy(first_params, second_params)
-
-                elif count_params_value > 2:
-                    destination = params_value[-1]
-                    if os.path.isdir(destination):
-                        for filename in kwargs["params"][-1]:
-                            if os.path.isfile(filename):
-                                shutil.copy(filename, destination)
-                            else:
-                                raise Exception( f"cp: cannot stat '{filename}': No such file or directory")
-                    else:
-                        raise Exception(f"cp: cannot stat '{filename}': No such file or directory")
-                    
-                            
-                elif kwargs["params"] == [] and kwargs["input"] != '':
-                    # this block is used Incase an Input is received from a pipe
-                    pass
-            
-            except FileNotFoundError:
-                print(
-                    f"\ncp: cannot open '{second_params}' for reading: No such file or directory")
-                
-            except Exception as e:
-                print(f"An error occurred: {e}")
-
+        rfd = copy_file(params[0].strip(),params[1].strip(),params[2].strip(),config['cwdid'])
+        if rfd["status_code"] == '200' and rfd["data"] is not None:
+            print("File copied.")
         else:
-            print(f"\ncp: missing file operand\nTry 'cp --help' for more information.")
+            print(rfd["message"] ) 
+                            
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
-
-    finally:
-       sys.stdout = sys. __stdout__
-
-    captured_output = "".join(cmds_logger.log_content)
-    return captured_output
-
+#cp python_code/shapes.py python_code/testmode tshapes.py
 
 def rm(**kwargs):
-    try:
-        if kwargs["params"] != []:
-            try:
-                for filename in kwargs["params"]:
-                    # Check if it's a directory or a file
-                    if os.path.isdir(filename):
-                        # Use rmtree for directories
-                        shutil.rmtree(filename) if kwargs["flags"] in ('r', 'R', 'rf', 'fr') else print(f"rm: cannot remove '{filename}': Is a directory")
-                    elif os.path.isfile(filename):
-                        # Use os.remove for files
-                        os.remove(filename)
-                    else:
-                        print(f"rm: cannot remove '{filename}': No such file or directory")
-            except Exception as e:
-                print(f"An error occurred: {e}")
-        elif kwargs["params"] == [] and kwargs["input"] != '':
-            filename = kwargs["input"].splitlines()[1]
-            os.remove(filename)
-        else:
-            print(f"\nrm: missing file operand.\nTry 'rm --help' for more information.")
+    input = kwargs["input"] if kwargs.get("input") else []
+    params = kwargs["params"] if kwargs.get("params") else []
+    flags = kwargs["flags"] if kwargs.get("flags") else []
 
-    except FileNotFoundError:
-        print(f"\rrm:'{filename}' No such file or directory")
+    config = load_config()
+
+    try:
+        rfd = delete_file(params[0].strip(),config['cwdid'])
+        if rfd["status_code"] == '200' and rfd["data"] is not None:
+            print("File Deleted.")
+        else:
+            print(rfd["message"] )              
     except Exception as e:
-        print(f"\rAn error occurred: {e}.\nTry 'rm --help' for more information.")
+        print(f"An error occurred: {e}")

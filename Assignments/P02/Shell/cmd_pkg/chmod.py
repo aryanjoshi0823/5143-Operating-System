@@ -1,51 +1,47 @@
-import os
-import sys
-from cmd_pkg.cmdsLogger import CmdsLogger
+from helper_files.api_call import *
+from helper_files.utils import *
 
 def chmod(**kwargs):
-    cmds_logger = CmdsLogger()
-    sys.stdout = cmds_logger
 
-    try:
-        params = kwargs.get("params",[])
-        flags = kwargs.get("flags",[])
+    input = kwargs["input"] if kwargs.get("input") else []
+    params = kwargs["params"] if kwargs.get("params") else []
+    flags = kwargs["flags"] if kwargs.get("flags") else []
 
-        # Check if MODE and FILE arguments are provided
-        if not params:
-            print("Error: Please provide at least one MODE and one FILE.")
-            return ""
-        
-        # Separate the modes and files
-        files = []
-        modes = []
+    config = load_config()
 
-        for param in params:
-            if os.path.exists(param):
-                files.append(param)
-            else:
-                modes.append(param)
+    print('\r')
+    #/python_code/ShapeModules/Point.pyc  
+    if params:
+        try:
+            values = params[1:]
+            mode = params[0]
+            
+            if not mode.isdigit() or len(mode) > 3 or not (0 <= int(mode[-2:], 8) <= 0o77):
+                print("Error: Mode must be an octal number between 00 and 77 for user and group.")
+                return
+ 
+            newPermVlu  = convert_mode_to_perm(mode)
 
-        if not files:
-            print("Error: Please provide at least one valid FILE.")
-            return ""
+            for param in values:
+                param = param.replace("'", "").replace('"', "")
+                permFile = get_file_permission(param,config['cwdid'])
 
-        for param in params: 
-            try: 
-                int_type_mode = int(modes,8)
-                for file in files:
-                    os.chmod(file, int_type_mode)  # Change the file mode
-                    print(f"Changed mode of {file} to {oct(int_type_mode)[2:]}")
+                if permFile["status_code"] == '200' and permFile["data"] is not None:
+                    update_file_permission(param, config['cwdid'], newPermVlu)
 
-            except Exception as e:
-                print(f"Error changing mode: {str(e)}")
+                permDir = get_dir_permission(param, config['cwdid'])
+                if permDir["status_code"] == '200' and permDir["data"] is not None:
 
-    except Exception as e:
-        print(f"Error: {str(e)}")
+                    dir_res = update_dir_permission(param, config['cwdid'], newPermVlu)
+                    print(dir_res)
+                print("permDir---",permDir)
 
-    finally:
-        sys.stdout = sys.__stdout__
+        except Exception as e:
+            print(f"Error: {e}")
+    else:
+        print("Error:  Please provide at least one MODE and one FILE.")
 
-    captured_output = ''.join(cmds_logger.log_content)
-    return captured_output
+    
+
 
 

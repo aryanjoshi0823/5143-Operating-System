@@ -1,55 +1,51 @@
-from cmd_pkg.cmdsLogger import CmdsLogger
-import os
-import sys
+from helper_files.api_call import *
+from helper_files.utils import *
 
 def wc(**kwargs):
 
-    cmds_logger = CmdsLogger()
-    sys.stdout = cmds_logger
-    try:
-        params = kwargs.get("params", [])
-        flags = kwargs.get("flags", [])
-        input_text = kwargs.get("input",[])
+    config = load_config()
 
+    input = kwargs["input"] if kwargs.get("input") else []
+    params = kwargs["params"] if kwargs.get("params") else []
+    flags = kwargs["flags"] if kwargs.get("flags") else []
+
+    print("input in wc---->",input)
+
+    try:
         is_line_count  = 'l' in flags
         is_word_count =  'w' in flags
 
+        final_vlu = ""
         if params:
-            file = params[0]
-            if os.path.isfile(file):
-                with open(file, 'r') as f:
-                    file_content = f.read()
-                counts = content_count(file_content, is_line_count, is_word_count)
-                print(f"{' '.join(map(str,counts))} {file}")
+            for param in params:
+                param = param.replace("'", "").replace('"', "")
+                rd = read_file_data(param,config['cwdid'])
 
-            else:
-                counts = content_count(input_text, is_line_count, is_word_count)
-                print(' '.join(map(str,counts)))
+                if rd["status_code"] == '200' and rd["data"] is not None:
+                    counts = content_count(rd["data"], is_line_count, is_word_count)
+
+                    parts = param.split("/")[-1]
+                    final_vlu = final_vlu + "\n" +f"{' '.join(map(str,counts))} {parts}"
+
+                else:
+                    print(f"{rd["message"]}")
+
+            if final_vlu:
+                print(final_vlu)
+                return (str(final_vlu))
+        else:
+            counts = content_count(input, is_line_count, is_word_count)
+            final_vlu = ' '.join(map(str,counts))
+            print(final_vlu)
+            return (str(final_vlu))
 
     except Exception as e:
         print(f"Error: {str(e)}")
         
-    finally:
-        sys.stdout = sys.__stdout__
-        captured_output = "".join(cmds_logger.log_content)
-        return captured_output
 
-def content_count(text, isCountLine, isCountWord):
-    
-    # list comprehension create new list of non-empty lines, 
-    # if line.strip(): This checks if the line is not empty (ignoring any whitespace).
-    # The strip() method removes leading and trailing whitespace. If the line contains
-    # only whitespace, it evaluates to False, so it is not included in the resulting list.
-    # text.split('\n'): This splits the text string into a list of lines based on the 
-    # newline character (\n).
 
-    lines = len([line for line in text.split('\n') if line.strip()])
-    words = len(text.split())
-    characters = len(text)
-
-    if isCountLine:
-        return [lines]
-    elif isCountWord:
-        return [words]
-    else:
-        return [lines, words, characters]
+def content_count(data, isCountLine, isCountWord):
+    char_count = len(data)
+    line_count = len(data.splitlines()) if isCountLine else 0
+    word_count = len(data.split()) if isCountWord else 0
+    return [line_count, word_count, char_count]

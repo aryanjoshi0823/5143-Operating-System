@@ -1,21 +1,33 @@
-import os
 import sys
+from helper_files.api_call import *
+from helper_files.utils import *
 
 def sort(**kwargs):
-    try:
-        is_reverse_order = 'r' in kwargs["flags"]
-        is_numeric_sort = 'n' in kwargs["flags"]
 
-        if kwargs["params"]:
-            first_params = kwargs["params"][0]
-            if os.path.isfile(first_params):
-                with open(first_params,'r') as file:
-                    data = file.read()
-            else:
-                raise FileNotFoundError(f"File '{first_params}' not found.")
+    config = load_config()
+
+    input = kwargs["input"] if kwargs.get("input") else []
+    params = kwargs["params"] if kwargs.get("params") else []
+    flags = kwargs["flags"] if kwargs.get("flags") else []
+
+    try:
+        is_reverse_order = 'r' in flags
+        is_numeric_sort = 'n' in flags
+
+        data = ""
+
+        if params:
+            for param in params:
+                first_params = param.strip() 
+                rfd = read_file_data(first_params,config['cwdid'])
+
+                if rfd["status_code"] == '200' and rfd["data"] is not None:
+                    data = data + rfd["data"]
+                else:
+                    print(rfd["message"] )
             
-        elif kwargs["input"] != []:
-            data = kwargs["input"]
+        elif input:
+            data = input
         else:
             data = sys.stdin.read()
         
@@ -26,7 +38,7 @@ def sort(**kwargs):
         sorted_output = "\n".join(sorted_lines)
         print('\n')
         print(sorted_output)
-        return ""
+        return (str(sorted_output))
 
     except Exception as e:
         print(f"Error: {str(e)}")

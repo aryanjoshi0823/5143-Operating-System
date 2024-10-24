@@ -1,9 +1,9 @@
 """ Methods written to implement the shell command 'History'. """
+from helper_files.api_call import *
+from helper_files.utils import *
 
-import os
-import readline
 from cmd_pkg.cmdsLogger import CmdsLogger
-import sys
+
 
 commands_history = []
 
@@ -19,11 +19,6 @@ def add_commands_to_history(commands, flags):
 
 def history(**kwargs):
     """Display history of command executed in current session."""
-    cmds_logger = CmdsLogger()
-
-    # Redirects sys.stdout to cmds_logger, so any printed 
-    # output is captured by the cmds_logger instead of appearing in the console.
-    sys.stdout = cmds_logger
 
     try:
         print("\n")
@@ -39,17 +34,22 @@ def history(**kwargs):
         else:
             flags = []
 
-        for index, item in enumerate(commands_history, start = 1):
-            print(index, item)
+        # rd = read_file_data("History", 6)
+        # if rd["status_code"] == '200' and rd["data"] is not None:
+        #     his_vlu = rd["data"].split("\n")
+        #     for each_cmd in his_vlu:
+        #         print(each_cmd)
+        # else:
+        #     print(f"{rd["message"]}")
+
+        for x in commands_history:
+            print(x)
+
+        print(commands_history)
+        return(str(commands_history))
+
 
     except Exception as e:
         print("An error occurred while displaying history:", e)
 
-    finally:
-        # remains unchanged regardless of how sys.stdout is manipulated,
-        # ensuring you have a way to revert to the original output.
-        sys.stdout = sys.__stdout__  # Restore the original stdout
 
-        # concatenates all the strings stored in cmds_logger.log_content into a single string.
-        captured_output = ''.join(cmds_logger.log_content)
-        return captured_output
