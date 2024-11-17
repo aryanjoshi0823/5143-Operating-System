@@ -7,6 +7,9 @@ import cmd_pkg
 from time import sleep
 import json
 from colorama import Fore, Style
+from cmd_pkg.history import commands_history
+from helper_files.api_call import *
+
 
 
 def load_config(file_path=".config"):
@@ -14,13 +17,12 @@ def load_config(file_path=".config"):
         config = json.load(file)
     return config
 
-# Load the config
 config = load_config()
-
-# Dictionary to store the commands from cmd_pkg.
 loaded_cmds = {}
-command_history=[]
 
+history_list = commands_history
+length =len(commands_history)-1
+cmd_list_index = length
 
 # Dynamically load all functions from cmd_pkg into the dictionary cmd
 def load_commands():
@@ -37,7 +39,7 @@ def load_commands():
             if callable(obj) and not name.startswith("__"):
                 loaded_cmds[name] = obj
     
-def print_cmd(cmd, config):
+def print_cmd(cmd, config, cursor_pos = 0):
     """This function "cleans" off the command line, then prints
     whatever cmd that is passed to it to the bottom of the terminal.
     """
@@ -50,7 +52,7 @@ def print_cmd(cmd, config):
         Fore.GREEN + current_user + " " +               
         Fore.YELLOW + root_or_home + " " +             
         Fore.BLUE + cwd +                              
-        Fore.WHITE + " $" +                          
+        Fore.WHITE + " $" +                       
         Style.RESET_ALL                             
     )
 
@@ -58,7 +60,11 @@ def print_cmd(cmd, config):
     sys.stdout.write("\r" + prompt + cmd)
     sys.stdout.flush()
 
-
+    #Position cursor after printed command
+    cursor_move_back = len(cmd) - cursor_pos
+    if cursor_move_back > 0:
+        sys.stdout.write(f"\033[{cursor_move_back}D")
+    sys.stdout.flush()
 
 if __name__ == "__main__":
 
@@ -68,12 +74,10 @@ if __name__ == "__main__":
     getch = Getch()
  
     input_cmd = ""
-    print(input_cmd)
+    cursor_pos = 0
+    print_cmd(input_cmd, config, cursor_pos)
 
-    index = 0
-    history_list = []
-
-    while True:  # loop forever
+    while True: 
 
         char = getch() # read a character (but don't print) 
 
@@ -81,12 +85,12 @@ if __name__ == "__main__":
             raise SystemExit("")
 
         elif char == "\x7f":  # back space pressed
-            input_cmd = input_cmd[:-1]
-            
-            # Move the cursor back and erase the character, end='' prevent print 
-            # function to add newline so the cursor stays on the same line after printing.
-            print("\b \b", end='') 
-            print_cmd(input_cmd,config)
+            if cursor_pos > 0:
+                # Remove the character at the cursor position and adjust the cursor position
+                input_cmd = input_cmd[:cursor_pos-1] + input_cmd[cursor_pos:]
+                cursor_pos -= 1
+                print("\b \b", end='')  # Move cursor back and erase the character
+                print_cmd(input_cmd, config, cursor_pos)
 
         #\x1b is the escape character in Python (hex 0x1b), 
         # corresponding to the ASCII "escape" (ESC). It's
@@ -96,134 +100,137 @@ if __name__ == "__main__":
             null = getch()  # waste a character
             direction = getch()  # grab the direction
 
-            if direction in "A":  # up arrow pressed
+            if direction in "A":  # up arrow 
                 # get the PREVIOUS command from your history (if there is one)
                 if history_list == []:
-                    print_cmd("")
-                elif index > 0:
-                    print_cmd(history_list[index],config)
-                    index -= 1
-                elif index == 0:  
-                    print_cmd(history_list[0],config)
+                    pass
+                elif cmd_list_index > 0:
+                    input_cmd = history_list[cmd_list_index][1]
+                    cursor_pos = (len(input_cmd))
+                    print_cmd(history_list[cmd_list_index][1],config,cursor_pos)
+                    cmd_list_index -= 1
 
-                print_cmd(input_cmd,config)
+                elif cmd_list_index == 0:
+                    input_cmd = history_list[0][1]
+                    cursor_pos = (len(input_cmd))
+                    print_cmd(history_list[0][1],config,cursor_pos)
                 sleep(0.1)
 
 
-            if direction in "B":  # down arrow pressed
+            if direction in "B":  # down arrow 
                 # get the NEXT command from history (if there is one)
                 if history_list == []:
-                    print_cmd("")
-                elif index < history_length:
-                    print_cmd(history_list[index],config)
-                    index += 1
-                elif index == history_length:
-                    print_cmd(history_list[index],config)
+                    pass
+                elif cmd_list_index < length:
+                    input_cmd = history_list[cmd_list_index][1]
+                    cursor_pos = (len(input_cmd))
+                    print_cmd(history_list[cmd_list_index][1],config,cursor_pos)
+                    cmd_list_index += 1
+
+                elif cmd_list_index == length:
+                    input_cmd = history_list[cmd_list_index][1]
+                    cursor_pos = (len(input_cmd))
+                    print_cmd(history_list[cmd_list_index][1],config,cursor_pos)
                 sleep(0.1)
 
-            if direction in "C":  # right arrow pressed
-                sys.stdout.write("\033[C")  # Move the cursor right by one position
-                sys.stdout.flush()
+            if direction in "C":  # right arrow 
+                if cursor_pos < len(input_cmd):
+                    cursor_pos += 1
+                    sys.stdout.write("\033[C")  # Move the cursor right by one position
+                    sys.stdout.flush()
 
             if direction in "D":  # left arrow pressed
-                sys.stdout.write("\033[D")  # Move the cursor left by one position
-                sys.stdout.flush()
+                if cursor_pos > 0:
+                    cursor_pos -= 1
+                    sys.stdout.write("\033[D")  # Move the cursor left by one position
+                    sys.stdout.flush()
                     
         elif char in "\r":  # enter pressed
 
-            left_cmds, redirect_cmd  = input_cmd.split('>',1) if '>' in input_cmd else (input_cmd, '')
+            try:
+                left_cmds, redirect_cmd  = input_cmd.split('>',1) if '>' in input_cmd else (input_cmd, '')
+                left_cmds_pipe = left_cmds.split('|')
+                captured_output = ""
 
-            print("left_cmds-->",left_cmds)
-            print("redirect_cmd-->",redirect_cmd)
+                # The line checks if there are multiple piped commands and if the 
+                # first command is "ls". If true, it sets captured_output to "ls" 
+                # for special handling.
 
-            left_cmds_pipe = left_cmds.split('|')
+                if len(left_cmds_pipe) > 0 and left_cmds_pipe[0].split()[0].strip() == "ls":
+                    captured_output = "ls"
 
-            print("left_cmds_pipe-->",left_cmds_pipe)
+                for each_commands in left_cmds_pipe:
 
-            captured_output = ""
+                    parts = []
 
-            # The line checks if there are multiple piped commands and if the 
-            # first command is "ls". If true, it sets captured_output to "ls" 
-            # for special handling.
-
-            if len(left_cmds_pipe) > 0 and left_cmds_pipe[0].split()[0].strip() == "ls":
-                captured_output = "ls"
-
-            for each_commands in left_cmds_pipe:
-                parts = shlex.split(each_commands)
-                print("parts--->",parts)
-
-                #first part of the command itself.
-                first_part = parts[0].strip() if parts else ""
-                print("first parts--->",first_part)
-
-                # other parameters
-                params = []
-                flags = []
-                helps = []
-
-                # parse flags, params, help 
-                for each_part in parts[1:]:
-                    if each_part.startswith('-'):
-                        if each_part.startswith('--'):
-                            helps.append(each_part.lstrip('-').strip())
-                        else:
-                            flags.append(each_part.lstrip('-').strip())
-                    else:
-                        params.append(each_part.strip())
-                
-                print("params--->",params)
-                print("flags--->",flags)
-                print("helps--->",helps)
-                print("captured_output in shell.py-->", captured_output)
-
-                # Invoke the command if it exists in the dynamically loaded commands
-                if first_part in loaded_cmds:
-                    try:
-                        # retrieves the function associated 
-                        command_func = loaded_cmds[first_part]   
-                        if helps:
-                            captured_output = command_func(params=params, flags=' '.join(flags), help=' '.join(helps), input=captured_output)
-                            #print("help cap output--->",captured_output)
-                        else:
-                            captured_output = command_func(params=params, flags=' '.join(flags), input=captured_output)
-                            #print("no help cap output--->",captured_output)
-                            
-                    except Exception as e:
-                        print(f"Error executing command {first_part}: {str(e)}")
-                else:
                     # for !x
-                    cmds_from_history_vlu= loaded_cmds.get('cmds_from_history') 
-                    print("\r")
-                    cmds_from_history_vlu(input_cmd)
-                    if not input_cmd.startswith('!'):  
-                        print(f"\nCommand '{first_part}' not found.")
+                    if each_commands.strip().startswith('!'):
+                        cmds_from_history_vlu= loaded_cmds.get('cmds_from_history') 
+                        cmd_x = cmds_from_history_vlu(each_commands.strip())
 
-                #adding to history
-                add_to_history_fuc = loaded_cmds["add_commands_to_history"]
-                (history_list,history_length) = add_to_history_fuc(each_commands, flags)
-                index = history_length
+                        if cmd_x["status_code"]=="200":
+                            if cmd_x and cmd_x.split()[0].strip() == "ls":
+                                captured_output = "ls"
 
+                            each_commands = cmd_x["data"]
+                        else:
+                            raise Exception(cmd_x["message"]) 
+                            
+                    parts = shlex.split(each_commands)
 
+                    #first part of the command like 'ls'.
+                    first_part = parts[0].strip() if parts else ""
 
-            # Redirection
-            if redirect_cmd:
-                #save_output_to_file(captured_output,redirect_cmd)  
-                pass
-            else:
-                print("\r")
-                #print("--->",captured_output)
-                  
+                    # other parameters
+                    params = []
+                    flags = []
 
-            config = load_config()  
-            #sleep(1)    
+                    # parse flags, params, help 
+                    for each_part in parts[1:]:
+                        if each_part.startswith('-'):
+                            if each_part.startswith('--'):
+                                raise Exception(f"'{each_part}' not found.") 
+                            else:
+                                flags.append(each_part.lstrip('-').strip())
+                        else:
+                            params.append(each_part.strip())
+                    
+                    # Invoke the command if it exists in the dynamically loaded commands
+                    if first_part in loaded_cmds:
+                        try:
+                            # retrieves the function associated 
+                            command_func = loaded_cmds[first_part]   
+                            captured_output = command_func(params=params, flags=' '.join(flags), input=captured_output)
+                                
+                        except Exception as e:
+                            print(Fore.RED+f"\n{first_part}: {str(e)}")
+                    else:
+                        raise Exception(f"Command '{first_part}' not found.")
+
+                    #adding to history, in return getting length, command history list
+                    add_cmd_to_history = loaded_cmds.get('add_commands')
+                    history_list, length = add_cmd_to_history(each_commands,flags)
+                    cmd_list_index = length
+
+                if redirect_cmd:
+                    redirected_file = redirect_cmd.strip()
+                    temp = write_file(redirected_file, config['cwdid'], captured_output)
+                    print(Fore.GREEN + f"\n{temp["message"]}")
+                else:
+                    print("\n")
+                    print( Fore.GREEN + f"{captured_output}")
+  
+            except Exception as e:
+                print(Fore.RED+f"\n Error: {e}\n")
+
+            config = load_config()     
             input_cmd = "" 
-            print_cmd(input_cmd,config) 
-
-
-        elif char == ':':
-            pass
+            cursor_pos = 0
+            print_cmd(input_cmd,config,cursor_pos) 
 
         else:
-            input_cmd += char  # add typed character to our "cmd"
-            print_cmd(input_cmd,config)  
+            input_cmd = input_cmd[:cursor_pos] + char + input_cmd[cursor_pos:]
+            cursor_pos += 1  # Move cursor right after adding character
+            print_cmd(input_cmd, config, cursor_pos)
+
+

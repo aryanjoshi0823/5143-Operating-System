@@ -1,3 +1,4 @@
+
 def clear(**kwargs):
     """Clears the terminal and moves the prompt to the top-left corner."""
 

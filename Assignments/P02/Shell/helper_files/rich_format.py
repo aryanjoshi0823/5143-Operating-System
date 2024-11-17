@@ -1,7 +1,7 @@
-# rich_table.py
-
 from rich.console import Console
 from rich.table import Table
+
+console = Console()
 
 def print_rich_table(headers, data):
     """Prints a formatted table using rich.
@@ -11,7 +11,7 @@ def print_rich_table(headers, data):
         data (list of lists): A list of rows, where each row is a list of column values.
     """
     # Create a console object for output
-    console = Console()
+
 
     table = Table(title="ls Command")
 
@@ -22,3 +22,4 @@ def print_rich_table(headers, data):
         table.add_row(*row)
 
     console.print(table)
+

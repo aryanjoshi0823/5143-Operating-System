@@ -55,6 +55,14 @@ def read_file_data(param: str, id: int):
     else:
         return {"status_code": response.status_code, "message": response.json().get("message")}
     
+def write_file(param: str, id: int, data: str): 
+    api_url = f"{base_url}postFile?filepath={param}&id={id}&content={data}"
+    response = requests.post(api_url)
+    if response.status_code == 200:
+        return response.json() 
+    else:
+        return {"status_code": response.status_code, "message": response.json().get("message")}
+    
 def get_file_permission(param: str, id: int):
     api_url = f"{base_url}perm_file?name={param}&id={id}"
     response = requests.get(api_url)
@@ -71,8 +79,8 @@ def get_dir_permission(param: str, id: int):
     else:
         return {"status_code": response.status_code, "message": response.json().get("message")}
     
-def copy_file(src_name: str, dest_name: str, new_name: str, id):
-    api_url = f"{base_url}cp?src_name={src_name}&dest_name={dest_name}&new_name={new_name}&id={id}"
+def copy_file(src_name: str, dest_name: str, id):
+    api_url = f"{base_url}cp?src_name={src_name}&dest_name={dest_name}&id={id}"
     response = requests.get(api_url)
     if response.status_code == 200:
         return response.json() 
@@ -112,13 +120,21 @@ def update_dir_permission(param: str, id: int, perm):
         return {"status_code": response.status_code, "message": response.json().get("message")}
     
 def update_history(cmds:str):
-    api_url = f"{base_url}chmod_dirs?filepath=python_code/History&id=1&content={cmds}"
+    api_url = f"{base_url}history?cmds={cmds}"
     response = requests.post(api_url)
     if response.status_code == 200:
         return response.json() 
     else:
         return {"status_code": response.status_code, "message": response.json().get("message")}
     
+def getCmds():
+    api_url = f"{base_url}getHistory"
+    response = requests.get(api_url)
+    if response.status_code == 200:
+        return response.json() 
+    else:
+        return {"status_code": response.status_code, "message": response.json().get("message")}
+
 def delete_file(name: str, id: int):
     api_url = f"{base_url}rm?name={name}&id={id}"
     response = requests.delete(api_url)
@@ -126,3 +142,4 @@ def delete_file(name: str, id: int):
         return response.json() 
     else:
         return {"status_code": response.status_code, "message": response.json().get("message")}
+    
