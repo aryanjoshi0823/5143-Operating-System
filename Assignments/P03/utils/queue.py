@@ -22,11 +22,6 @@ class Queue:
     def __init__(self):
         self.queue = []
 
-    def __str__(self):
-        s = " "
-        s += "".join(self.queue) + " "
-        return s
-
     def addPCB(self, pcb):
         
         """

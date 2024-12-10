@@ -3,19 +3,16 @@ from base.baseClass import BaseClass
 from utils.rich_print import UI_Layout
 from rich.live import Live
 from utils.queue import ReadyQueue
+from collections import deque
 import time
 
 class MLFQ(BaseClass):
-    def __init__(self, cpu_count, io_count, time_slice, algorithm_type, speed):  
+    def __init__(self, cpu_count, io_count, time_slice, algorithm_type, speed, levels = 3):  
         super().__init__(cpu_count, io_count, time_slice, algorithm_type)
         self.speed = speed
-        self.queues = [
-            {'queue': ReadyQueue(), 'quantum': 4},
-            {'queue': ReadyQueue(), 'quantum': 8},
-            {'queue': ReadyQueue(), 'quantum': 16}
-        ]
-        self.aging_threshold = 20
-
+        self.mlfq_queues = [deque() for _ in range(levels)]  
+        self.time_slices = time_slice  
+        
     def run_algorithm(self):
         self.session_init()
         with Live(

@@ -25,15 +25,12 @@ class BaseClass:
         self.wait = WaitQueue()
         self.ready = ReadyQueue()
         self.terminated = TerminatedQueue()
-        current_time = str(datetime.now().strftime("%Y%m%d_%H%M%S"))
 
         self.client_id = "sgtrock"
 
         self.running = self.create_cpus()
         self.io = self.create_io()
-        
-        #self.readData()
-        self.total_processes = self.new.length()
+        self.total_processes = self.ready.length()
 
         self.terminated_process_count = 0
         self.total_tat = 0
@@ -41,17 +38,11 @@ class BaseClass:
         self.total_iwt = 0
         self.clock = 0
         self.session_id = 0
+
         self.message = []
 
-        # 'a' appends to the file, create if not exists
-        #file_name=algo_type+"_"+str(self.cpuCount)+"_"+str(self.ioCount)+"_"+self.datfile.split("/")[-1]
-
-        self.header_written = False
-        self.priority_req = False
-
-        #self.message_file = self.open_file("message_"+file_name)
-        #self.job_stats_file = self.open_file("job_stats_"+file_name)
-        #self.overall_stats_file = self.open_file(  "overall_stats_"+file_name)
+        self.cycle_count = 0
+        self.toggle_priority_adjustment = False 
 
 
     def create_cpus(self):
@@ -99,8 +90,7 @@ class BaseClass:
                 f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{process.pid}[/bold gold1] [bold green]{process.get_current_burst_time()}[/bold green]] [cyan]entered ready queue[/cyan] \n")
             self.ready.addPCB(process)
             self.new.queue.remove(process)
-        if self.priority_req:
-            self.ready.sort_by_priority()
+
 
     def ready_to_running(self):
         i = 1
@@ -126,14 +116,6 @@ class BaseClass:
                 if wait_job.burst_types == "IO":
                     io.load_job(wait_job)
             i += 1
-
-    def prevent_starvation(self):
-        for process in self.ready.queue:
-            if (self.clock - process.arrivalTime) > self.starvation_threshold:
-                self.message.append(
-                    f"[yellow]Job [pid_{process.pid}] promoted to higher priority due to long wait[/yellow]"
-                )
-                process.priority -= 1  # Promote priority (lower value = higher priority).
 
     def preempt_if_necessary(self):
         for cpu in self.running:

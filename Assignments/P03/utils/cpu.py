@@ -35,7 +35,6 @@ class CPU:
     def complete_job(self):
         if self.current_job.get_current_burst_time() == 0:
             completed_job = self.current_job
-            # self.set_idle()
             return completed_job
 
     def set_idle(self):

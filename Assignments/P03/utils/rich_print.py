@@ -10,6 +10,7 @@ from rich.style import Style
 # [bold blue]
 class QueueTable:
     def __init__(self, new, ready, running, wait, io, terminate, messages) -> None:
+        # Initializes the QueueTable with process queues and a console for displaying output.
         self.console = Console()
         self.terminal_width = self.console.width
         self.new = new
@@ -21,6 +22,7 @@ class QueueTable:
         self.message = messages
 
     def make_row(self, queueName, queue_list, flag=False):
+        # Creates a single row for the table showing process details for a given queue.
         processes = ""
         if flag:
             for cpu_io in queue_list:
@@ -34,6 +36,7 @@ class QueueTable:
         return [queueName, processes]
 
     def generate_table(self):
+        # Generates the main table displaying all queues and their processes.
         table = Table(show_header=False)
         table.add_column("Queue", style="bold red",
                          width=int(self.terminal_width * 0.1))
@@ -48,6 +51,7 @@ class QueueTable:
         return table
 
     def out_side_table(self):
+        # Creates an outer table with the main queue table and messages side by side.
         table = Table(show_header=False)
         table.add_column("QueeTbale", style="bold cyan")
         message_text = ''.join(self.message)
@@ -56,6 +60,7 @@ class QueueTable:
         return table
 
     def __rich__(self) -> Panel:
+        # Returns a rich Panel for the QueueTable to display in the UI.
         return Panel(self.out_side_table(), title=f"[bold] Queue Steps [/bold]")
 
 
@@ -63,6 +68,7 @@ class Clock:
     """Renders the time in the center of the screen."""
 
     def __init__(self, clk, total_process, finished_process, cpu_count, io_count,type):
+        # Initializes clock details and system statistics.
         self.clk = clk
         self.total_process = total_process
         self.finished_process = finished_process
@@ -71,6 +77,7 @@ class Clock:
         self.type=type
 
     def __rich__(self) -> Panel:
+        # Returns a rich Panel showing clock time and system statistics.
         output_str = f"[bold red]Time:[/bold red] [green]{self.clk}[/green]\n"
         output_str += f"[bold red]Algo_Type:[/bold red] [green] {self.type}[/green]   [bold red]CPU_Count:[/bold red] [green] {self.cpu_count}[/green]   [bold red]IO_Count:[/bold red] [green]{self.io_count}[/green]   [bold red]Total_Process:[/bold red] [green]{self.total_process}[/green]  [bold red]Completed_Process:[/bold red] [green]{self.finished_process}[/green]"
         return Panel(Text.from_markup(output_str, justify="center"), title="Clk Time")
@@ -82,6 +89,7 @@ class Clock:
 # IWT = Time spent in wait queue
 class Stats:
     def __init__(self, terminate) -> None:
+        # Initializes the statistics table for terminated processes.
         self.table = Table()
         self.console = Console()
         self.terminal_width = self.console.width
@@ -89,6 +97,7 @@ class Stats:
         self.generate_table()
 
     def add_row(self):
+        # Adds the latest terminated process statistics to the table.
         self.table.rows = []
         if len(self.terminated) > 0:
             current_term = self.terminated[-1]
@@ -107,8 +116,7 @@ class Stats:
         self.table.add_row(str(pid), str(at), str(tat), str(rwt), str(iwt))
 
     def generate_table(self):
-        #   table.add_column("Metric", style="cyan", justify="right")
-        # table.add_column("Value", style="green")
+        # Creates the table structure for terminated process statistics.
         self.table.add_column("[bold red]Pid[/bold red]",
                               style="bold green", width=int(self.terminal_width * 0.9))
         self.table.add_column("[bold red]Time entered system[/bold red]",
@@ -124,9 +132,10 @@ class Stats:
         return self.table
 
     def __rich__(self) -> Panel:
+        # Returns a rich Panel for the statistics table.
         return Panel(self.table, title=f"[bold] Job Stats [/bold]")
 
-
+# A function to create the UI layout combining clock, queue table, and statistics.
 def UI_Layout(new, ready, running, wait, IO, exited, clk, messages, total_process, finished_process, cpu_count, io_count,type) -> Layout:
     layout = Layout()
     layout.split(
@@ -150,7 +159,7 @@ def UI_Layout(new, ready, running, wait, IO, exited, clk, messages, total_proces
 
     return layout
 
-
+# A class to display overall system statistics like averages and utilizations.
 class OverallStat:
     def __init__(self, ATAT, ARWT, AIWT, cpu_util, io_util):
         self.ATAT = ATAT
@@ -163,6 +172,7 @@ class OverallStat:
         self.table = Table(show_header=True)
 
     def display_table(self):
+        # Displays a table with overall system statistics.
         self.table.add_column("[bold red]Average Turn Around Time[/bold red]",
                               style="bold green", width=int(self.terminal_width * 0.9))
         self.table.add_column("[bold red]Average Ready Wait Time[/bold red]",
@@ -176,7 +186,6 @@ class OverallStat:
 
         self.table.add_row(str(self.ATAT), str(self.ARWT), str(
             self.AIWT), f"{self.cpu_util:.2f}%", f"{self.io_util:.2f}%")
-        # console.print(table)
         panel = Panel(self.table, title=f"[bold]Overall Statistics[/bold] ")
         console = Console()
         console.print(panel)

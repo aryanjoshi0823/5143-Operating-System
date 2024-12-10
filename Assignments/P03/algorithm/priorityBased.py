@@ -6,10 +6,9 @@ import time
 
 class PriorityBased(BaseClass):
 
-    def __init__(self, cpu_count, io_count, time_slice, algorithm_type, speed, starvation_threshold=10):  
+    def __init__(self, cpu_count, io_count, time_slice, algorithm_type, speed):  
         super().__init__(cpu_count, io_count, time_slice, algorithm_type)
         self.speed = speed
-        self.starvation_threshold = starvation_threshold  # Time threshold to promote low-priority processes.
 
     def run_algorithm(self):
         self.session_init()
@@ -46,12 +45,7 @@ class PriorityBased(BaseClass):
                 self.move_new_ready()
                 self.ready.increment_CPUWaitTime()
 
-                # Check and promote processes to prevent starvation
-                #self.prevent_starvation()
-
-                # Sort the ready queue by priority (lower number = higher priority)
-                self.ready.queue.sort(key=lambda job: job.priority)
-
+                self.ready.queue.sort(key=lambda job: (job.priority, -job.CPUWaitTime))
                 if len(self.ready.queue) > 0:
                     self.preempt_if_necessary()
                     self.ready_to_running()
