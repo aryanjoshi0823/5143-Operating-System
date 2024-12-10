@@ -1,10 +1,9 @@
 # 5143 - Operating Systems
-## Fall 2024
 
 <h1 align="left"> Welcome 👋 </h1>
 
 ## Aryan Joshi
-#### Repo: 5143 Operating System
+#### Repo: 5143-Operating-System
 #### Email: ajoshi0823@my.msutexas.edu
 
 #### Image:
