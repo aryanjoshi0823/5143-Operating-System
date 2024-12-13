@@ -64,7 +64,6 @@ class FCFS(BaseClass):
                         
                         complete_job = cpu.complete_job()
                         if complete_job:
-
                             burst = getBurst(self.client_id, self.session_id, complete_job.pid)
                             if burst and burst['success']:
                                 burst_type = burst['data']['burst_type']

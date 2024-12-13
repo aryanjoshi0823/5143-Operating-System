@@ -30,7 +30,8 @@ class PCB:
         self.CPUWaitTime_cpy = 0      # Time in ready queue
         self.IOWaitTime = 0           # Time in wait queue
         self.TurnAroundTime = 0       # Time from start to finish
-        self.priority_order = [f"p{i}" for i in range(1, 101)]
+        self.queue_time_slice = 0 
+
 
 
     def decrement_burst_time(self):

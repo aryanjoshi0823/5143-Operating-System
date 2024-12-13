@@ -20,10 +20,10 @@ class CPU:
         self.current_job = None
         self.total_execution_time = 0
 
-    def __str__(self):
-        s = ""
-        s += self.complete_job + " "
-        return s
+    # def __str__(self):
+    #     s = ""
+    #     s += self.complete_job + " "
+    #     return s
 
     def increment_execution_time(self):
         self.total_execution_time += 1

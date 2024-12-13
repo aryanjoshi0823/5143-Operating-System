@@ -34,7 +34,7 @@ class BaseClass:
         self.io = self.create_io()
         self.total_processes = self.ready.length()
 
-
+        self.clock_tick_count = 0
         self.terminated_process_count = 0
         self.total_tat = 0
         self.total_rwt = 0
@@ -97,15 +97,42 @@ class BaseClass:
         ready_processes = [process for process in self.new.queue if int(process.arrivalTime) + 1 <= self.clock]
         for process in ready_processes:
             burst_time = process.currentBrust
+            inserted = False
 
             # Dynamically find the appropriate queue based on burst time
             for index, queue_info in enumerate(self.ready.queue):
                 if burst_time <= queue_info["quantum"]:
+                    process.queue_time_slice = queue_info["quantum"]
                     queue_info['queue'].append(process)
-                    print(f"Process {process.pid} moved to Queue {index + 1} (Priority {queue_info['priority']})")
-                    break  
-                
+                    self.message.append(
+                        f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{process.pid}[/bold gold1] [bold green]{process.get_current_burst_time()}[/bold green]] [cyan]entered ready queue {index + 1}[/cyan] \n")
+                    inserted = True
+                    break 
+
+            # If no matching queue was found, insert the job into the last priority queue
+            if not inserted:
+                self.ready.queue[-1]['queue'].append(process)
+                process.queue_time_slice = self.ready.queue[-1]["quantum"]
+                self.message.append(
+                    f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{process.pid}[/bold gold1] [bold green]{process.get_current_burst_time()}[/bold green]] [cyan]entered ready queue (default to last level)[/cyan] \n")
+
             self.new.queue.remove(process)
+        
+
+    def ready_to_running_mlfq(self):
+        i = 1
+        for cpu in self.running:
+            if cpu.is_idle:
+                # load one PCB to ech CPU from ready and remove from ready
+                for index, queue_info in enumerate(self.ready.queue):
+                    if queue_info['queue']:
+                        job = queue_info['queue'].popleft()
+                        if job.burst_types == "CPU":
+                            cpu.load_job(job)
+                            self.message.append(
+                                f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{cpu.current_job.pid}[/bold gold1] [bold green]{cpu.current_job.get_current_burst_time()}[/bold green]] [cyan]obtained ready cpu_{i}[/cyan] \n")
+                        break  
+            i += 1
 
     def ready_to_running(self):
         i = 1

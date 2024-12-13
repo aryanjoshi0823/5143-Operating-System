@@ -21,19 +21,53 @@ class QueueTable:
         self.terminate = terminate
         self.message = messages
 
+    # def make_row(self, queueName, queue_list, flag=False):
+    #     # Creates a single row for the table showing process details for a given queue.
+    #     processes = ""
+    #     if flag:
+    #         for cpu_io in queue_list:
+    #             if cpu_io.current_job:
+    #                 processes += str(
+    #                     f"[bold gold1] [white][ [/white]Pid_{cpu_io.current_job.pid}[/bold gold1] [bold green] [bold green]{cpu_io.current_job.currentBrust}[/bold green] [bold blue] {cpu_io.current_job.priority} [white]][/white][/bold blue][/bold green]")
+    #     else:
+    #         for pcb in queue_list:
+    #             processes += str(
+    #                 f"[bold gold1] [white][ [/white]Pid_{pcb.pid}[/bold gold1] [bold green] {pcb.currentBrust} [bold blue] {pcb.priority} [white]][/white][/bold blue][/bold green]")
+    #     return [queueName, processes]
+
+
     def make_row(self, queueName, queue_list, flag=False):
-        # Creates a single row for the table showing process details for a given queue.
         processes = ""
-        if flag:
-            for cpu_io in queue_list:
-                if cpu_io.current_job:
+        if queueName == "Ready":
+            # queue_list is actually something like:
+            # [{'queue': deque([...]), 'quantum': ..., 'priority': ...},
+            #  {'queue': deque([...]), 'quantum': ..., 'priority': ...}, ...]
+            for q_info in queue_list:
+                for pcb in q_info['queue']:
                     processes += str(
-                        f"[bold gold1] [white][ [/white]Pid_{cpu_io.current_job.pid}[/bold gold1] [bold green] [bold green]{cpu_io.current_job.currentBrust}[/bold green] [bold blue] {cpu_io.current_job.priority} [white]][/white][/bold blue][/bold green]")
+                        f"[bold gold1][white][ [/white]Pid_{pcb.pid}[/bold gold1]"
+                        f" [bold green]{pcb.currentBrust} [bold blue]{pcb.priority} [white]][/white][/bold blue][/bold green]"
+                    )
         else:
-            for pcb in queue_list:
-                processes += str(
-                    f"[bold gold1] [white][ [/white]Pid_{pcb.pid}[/bold gold1] [bold green] {pcb.currentBrust} [bold blue] {pcb.priority} [white]][/white][/bold blue][/bold green]")
+            # Original logic for queues that are just a simple list of PCBs
+            if flag:
+                # For CPU or IO queues, which hold CPU/IO objects with current_job
+                for cpu_io in queue_list:
+                    if cpu_io.current_job:
+                        pcb = cpu_io.current_job
+                        processes += str(
+                            f"[bold gold1][white][ [/white]Pid_{pcb.pid}[/bold gold1]"
+                            f" [bold green]{pcb.currentBrust} [bold blue]{pcb.priority} [white]][/white][/bold blue][/bold green]"
+                        )
+            else:
+                # For other queues (new, wait, exit) that are a simple list of PCBs
+                for pcb in queue_list:
+                    processes += str(
+                        f"[bold gold1][white][ [/white]Pid_{pcb.pid}[/bold gold1]"
+                        f" [bold green]{pcb.currentBrust} [bold blue]{pcb.priority} [white]][/white][/bold blue][/bold green]"
+                    )
         return [queueName, processes]
+
 
     def generate_table(self):
         # Generates the main table displaying all queues and their processes.

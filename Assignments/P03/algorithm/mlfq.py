@@ -20,62 +20,202 @@ class MLFQ(BaseClass):
 
     def run_algorithm(self):
         self.session_init()
-        while True:
-            time.sleep(self.speed)
-            self.message = []
-            # jobs_left = getJobsLeft(self.client_id,self.session_id)
-            # if jobs_left == 0:
-            #     break
-            self.fetch_job()
-            self.move_new_ready_mlfq()
-            print(self.ready.queue[0])
+        with Live(
+            UI_Layout(
+                self.new.queue,
+                self.ready.queue,
+                self.running,
+                self.wait.queue,
+                self.io,
+                self.terminated.queue,
+                self.clock,
+                self.message,
+                self.total_processes,
+                self.terminated_process_count,
+                self.cpu_Count,
+                self.io_Count,
+                self.algo_type
+            ),
+            refresh_per_second=10,
+        ) as live:
 
-            # for queue_data in self.queues:
-            #     queue = queue_data['queue']
-            #     quantum = queue_data['quantum']
+            while True:
+                time.sleep(self.speed)
+                self.message = []
 
-            #     if queue.length() > 0:
-            #         job = queue.removePCB()
+                jobs_left = getJobsLeft(self.client_id,self.session_id)
+                if jobs_left == 0:
+                    break
 
-            #         # Run job for its quantum or remaining burst time
-            #         execution_time = min(job.get_current_burst_time(), quantum)
-            #         job.decrement_burst_time()
-            #         self.clock += execution_time
-            #         job.CPUWaitTime += execution_time
-            #         job.CPUWaitTime_cpy += execution_time
-            #         self.message.append(
-            #             f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{job.pid}[/bold gold1] [bold green]{job.get_current_burst_time()}[/bold green]] [cyan]ran for {execution_time} ms in Queue with Quantum {quantum}[/cyan] \n"
-            #         )
+                self.fetch_job()
+                self.move_new_ready_mlfq()
 
-            #         # Check job state
-            #         if job.get_current_burst_time() <= 0:
-            #             self.terminated.addPCB(job)
-            #             self.terminated_process_count += 1
-            #             self.message.append(
-            #                 f"[green]Job {job.pid} completed and moved to terminated queue[/green]\n"
-            #             )
-            #         else:
-            #             next_queue_index = self.queues.index(queue_data) + 1
-            #             if next_queue_index < len(self.queues):
-            #                 self.queues[next_queue_index]['queue'].addPCB(job)
-            #                 self.message.append(
-            #                     f"[yellow]Job {job.pid} moved to lower-priority queue[/yellow]\n"
-            #                 )
-            #             else:
-            #                 queue.addPCB(job)  # Stay in the same queue if it's the lowest
+                self.ready_to_running_mlfq()
 
-            # # Implement aging for lower-priority jobs
-            # for lower_queue_data in self.queues[1:]:
-            #     for job in lower_queue_data['queue'].queue:
-            #         job.CPUWaitTime += execution_time
-            #         if job.CPUWaitTime >= self.aging_threshold:
-            #             lower_queue_data['queue'].queue.remove(job)
-            #             self.queues[0]['queue'].addPCB(job)
-            #             job.CPUWaitTime = 0
-            #             self.message.append(
-            #                 f"[yellow]Job {job.pid} promoted due to aging[/yellow]\n"
-            #             )
+                i = 1          
+                for cpu in self.running:
+                    if not cpu.is_idle:
+                        cpu.increment_execution_time() 
 
-            self.clock += 1
+                        if self.clock_tick_count <= cpu.current_job.queue_time_slice:
+                            cpu.current_job.decrement_burst_time()
+                            self.message.append(
+                                f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{cpu.current_job.pid}[/bold gold1] [bold green]{cpu.current_job.get_current_burst_time()}[/bold green]] [cyan]is running in CPU_{i}[/cyan] \n")
+                                
+                            complete_job = cpu.complete_job()
+                            if complete_job:
+                                burst = getBurst(self.client_id, self.session_id, complete_job.pid)
+                                if burst and burst['success']:
+                                    burst_type = burst['data']['burst_type']
+                                    burst_duration = int(burst['data']['duration'])
 
-               
+                                    # Append burst info to the job
+                                    complete_job.currentBrust = burst_duration
+                                    complete_job.burst_types= burst_type
+
+                                    self.clock_tick_count = 0
+
+                                    if burst_type == "CPU":
+                                        inserted_cpu_ready= False
+                                
+                                        for index, queue_info in enumerate(self.ready.queue):
+                                            if complete_job.currentBrust <= queue_info["quantum"]:
+                                                complete_job.queue_time_slice = queue_info["quantum"]
+                                                queue_info['queue'].append(complete_job)
+                                                self.message.append(
+                                                    f"from cpu [green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue {index + 1}[/cyan] \n")
+                                                inserted_cpu_ready = True
+                                                break 
+
+                                        # If no matching queue was found, insert the job into the last priority queue
+                                        if not inserted_cpu_ready:
+                                            complete_job.queue_time_slice = self.ready.queue[-1]["quantum"]
+                                            self.ready.queue[-1]['queue'].append(complete_job)
+                                            self.message.append(
+                                                f"from not inserted queue [green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue (default to last level)[/cyan] \n")
+
+                                        self.ready.increment_CPUWaitTime_mlfq()
+                                        cpu.set_idle()
+
+                                    elif burst_type == "IO":
+                                        self.wait.addPCB(complete_job)
+                                        self.wait.increment_IOWaitTime()
+                                        self.message.append(
+                                        f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered Wait queue[/cyan] \n")
+                                        cpu.set_idle()
+
+                                    elif burst_type == "EXIT":
+                                        self.terminated.addPCB(complete_job)
+                                        complete_job.TurnAroundTime = self.clock - complete_job.arrivalTime
+                                        self.terminated_process_count += 1
+                                        self.total_tat += complete_job.TurnAroundTime
+                                        self.total_rwt += complete_job.CPUWaitTime
+                                        self.total_iwt += complete_job.IOWaitTime
+                                        self.message.append(
+                                            f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered Exit queue{i}[/cyan] \n")
+                                        cpu.set_idle()
+
+                        else:
+                            # If not finished, increase waiting time of others and demote job to next queue
+                            for index, queue_info in enumerate(self.ready.queue):
+                                if index + 1 < len(self.ready.queue):
+                                    self.ready.queue[index + 1]['queue'].append(cpu.current_job)
+                                    self.message.append(
+                                        f"from time slice exceed [green]At time: {self.clock} [/green]job [bold gold1][pid_{cpu.current_job.pid}[/bold gold1] [bold green]{cpu.current_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue {index + 1}[/cyan] \n")
+                                    break 
+                                else:
+                                    queue_info['queue'].append(cpu.current_job)
+
+                            self.ready.increment_CPUWaitTime_mlfq()
+                            self.clock_tick_count = 0
+                            cpu.set_idle() 
+                        i+=1
+
+
+
+
+                if (len(self.wait.queue) > 0):
+                    self.waiting_to_io()
+                
+                j = 1 
+                for io in self.io:
+                    if not io.is_idle:
+
+                        io.increment_execution_time()
+                        io.current_job.decrement_burst_time()
+                        self.message.append(
+                            f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{io.current_job.pid}[/bold gold1] [bold green]{io.current_job.get_current_burst_time()}[/bold green]] [cyan]is running in IO_{j}[/cyan] \n")
+                        
+                        complete_job = io.complete_job()
+                        if complete_job:
+
+                            burst = getBurst(self.client_id, self.session_id, complete_job.pid)
+                            if burst and burst['success']:
+                                burst_type = burst['data']['burst_type']
+                                burst_duration = int(burst['data']['duration'])
+
+                                # Append burst info to the job
+                                complete_job.currentBrust = burst_duration
+                                complete_job.burst_types= burst_type
+
+                                if burst_type == "CPU":
+                                    inserted_io_ready= False
+                                    for index, queue_info in enumerate(self.ready.queue):
+                                        if complete_job.currentBrust <= queue_info["quantum"]:
+                                            complete_job.queue_time_slice = queue_info["quantum"]
+                                            queue_info['queue'].append(complete_job)
+                                            self.message.append(
+                                                f"from cpu [green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue {index + 1}[/cyan] \n")
+                                            inserted_io_ready = True
+                                            break 
+
+                                    # If no matching queue was found, insert the job into the last priority queue
+                                    if not inserted_io_ready:
+                                        complete_job.queue_time_slice = self.ready.queue[-1]["quantum"]
+                                        self.ready.queue[-1]['queue'].append(complete_job)
+                                        self.message.append(
+                                            f"from not inserted queue [green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue (default to last level)[/cyan] \n")
+
+                                    self.ready.increment_CPUWaitTime_mlfq()
+                                    io.set_idle()
+
+                                elif burst_type == "IO":
+                                    self.wait.addPCB(complete_job)
+                                    self.wait.increment_IOWaitTime()
+                                    self.message.append(
+                                        f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered Wait queue[/cyan] \n")
+                                    io.set_idle()
+                                
+                                elif burst_type == "EXIT":
+                                    self.terminated.addPCB(complete_job)
+                                    complete_job.TurnAroundTime = self.clock - complete_job.arrivalTime
+                                    self.terminated_process_count += 1
+                                    self.total_tat += complete_job.TurnAroundTime
+                                    self.total_rwt += complete_job.CPUWaitTime
+                                    self.total_iwt += complete_job.IOWaitTime
+                                    self.message.append(
+                                        f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered Exit[/cyan] \n")
+                                    io.set_idle()
+                    j += 1
+
+                self.clock += 1
+                self.clock_tick_count +=1
+                live.update(
+                    UI_Layout(
+                        self.new.queue,
+                        self.ready.queue,
+                        self.running,
+                        self.wait.queue,
+                        self.io,
+                        self.terminated.queue,
+                        self.clock,
+                        self.message,
+                        self.total_processes,
+                        self.terminated_process_count,
+                        self.cpu_Count,
+                        self.io_Count,
+                        self.algo_type
+                    )
+                )
+
+                

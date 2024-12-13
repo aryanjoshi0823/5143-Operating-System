@@ -81,6 +81,14 @@ class ReadyQueue(Queue):
             p.CPUWaitTime += 1
             p.CPUWaitTime_cpy += 1
 
+    def increment_CPUWaitTime_mlfq(self):
+        for index, queue_info in enumerate(self.queue):
+            for p in queue_info['queue']:
+                p.CPUWaitTime += 1
+                p.CPUWaitTime_cpy += 1
+
+
+
 
 class WaitQueue(Queue):
     """ Holds processes waiting for IO device
