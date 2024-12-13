@@ -5,6 +5,7 @@ from algorithm.fcfs import FCFS
 from algorithm.priorityBased import PriorityBased
 from algorithm.roundRobin import RoundRobin
 from algorithm.mlfq import MLFQ
+import traceback
 
 
 def display_help_message():
@@ -12,7 +13,7 @@ def display_help_message():
     [cyan]python3 simulation.py type=RR cpus=5 ios=5 timeslice=5 speed=0.01[/cyan]
     [cyan]python3 simulation.py type=FCFS cpus=5 ios=5 speed=0.01[/cyan]
     [cyan]python3 simulation.py type=PB cpus=5 ios=5 speed=0.01[/cyan]
-    [cyan]python3 simulation.py type=MLFQ cpus=5 ios=5 speed=0.01[/cyan]
+    [cyan]python3 simulation.py type=MLFQ cpus=5 ios=5 speed=0.01 timeslice=4,6,8 levels=3[/cyan]
 
     [bold green]Required Parameters:[/bold green]
         [cyan]type[/cyan]   = algorithm type [FCFS, RR, PB, MLFQ]
@@ -45,16 +46,26 @@ def parse_arguments(arguments):
     # Additional validation for RR
     if parsed_args['type'] == "RR" and "timeslice" not in parsed_args:
         raise ValueError("Missing required argument: timeslice for RR")
+    
+    if parsed_args['type'] == "MLFQ" and ("timeslice" not in parsed_args or "levels" not in parsed_args):
+        raise ValueError("Missing required argument: timeslice and levels for MLFQ")
 
     # Convert argument types
     parsed_args['cpus'] = int(parsed_args['cpus'])
     parsed_args['ios'] = int(parsed_args['ios'])
-    parsed_args['timeslice'] = int(parsed_args.get('timeslice', 5))
+    if 'timeslice' in parsed_args:
+        vlu = parsed_args['timeslice']
+        if ',' in vlu:
+            parsed_args['timeslice'] = list(map(int, vlu.split(',')))
+        else:
+            parsed_args['timeslice'] = int(vlu)
     parsed_args['speed'] = float(parsed_args.get('speed', 0.01))
+    parsed_args['levels'] = int(parsed_args.get('levels', 3))
+    
 
     return parsed_args
 
-def initialize_scheduler(algorithm_type, cpu_count, io_count, time_slice, speed):
+def initialize_scheduler(algorithm_type, cpu_count, io_count, time_slice, speed, levels):
 
     """Initializes and returns the appropriate scheduler based on the algorithm type."""
 
@@ -68,7 +79,7 @@ def initialize_scheduler(algorithm_type, cpu_count, io_count, time_slice, speed)
         return RoundRobin(cpu_count, io_count, time_slice, algorithm_type, speed)
 
     elif algorithm_type == "MLFQ":
-        return MLFQ(cpu_count, io_count, time_slice, algorithm_type, speed)
+        return MLFQ(cpu_count, io_count, time_slice, algorithm_type, speed, levels)
 
     else:
         raise ValueError("Algorithm type should be one of: FCFS, RR, PB, MLFQ")
@@ -88,7 +99,8 @@ if __name__ == '__main__':
             parsed_args['cpus'],
             parsed_args['ios'],
             parsed_args['timeslice'],
-            parsed_args['speed']
+            parsed_args['speed'], 
+            parsed_args['levels'], 
         )
 
         # Run the scheduler if it's valid
@@ -101,6 +113,7 @@ if __name__ == '__main__':
     except ValueError as e:
         print(f"[bold red]Error:[/bold red] {e}\n")
         display_help_message()
+        traceback.print_exc()
         sys.exit(1)
 
 

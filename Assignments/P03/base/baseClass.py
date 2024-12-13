@@ -14,12 +14,14 @@ class BaseClass:
         This class serve as base class for all the algorithm. All of the algorithm use this class for processing jobs. 
         This creates cups, ios etc required by the program
     """
-    def __init__(self, cpu_Count, io_Count, time_Slice, algo_type):
+    def __init__(self, cpu_Count, io_Count, time_Slice, algo_type, speed = 0, mlfq_levels = 3):
         self.algo_type = algo_type
         self.time_Slice = time_Slice
         self.time_Slice_Copy = time_Slice
         self.cpu_Count = cpu_Count
         self.io_Count = io_Count
+        self.speed = speed
+        self.mlfq_levels = mlfq_levels
     
         self.new = NewQueue()
         self.wait = WaitQueue()
@@ -31,6 +33,7 @@ class BaseClass:
         self.running = self.create_cpus()
         self.io = self.create_io()
         self.total_processes = self.ready.length()
+
 
         self.terminated_process_count = 0
         self.total_tat = 0
@@ -83,14 +86,26 @@ class BaseClass:
                             f"[green]At time: {self.clock} [/green]job [bold gold1]pid_{job_id}[/bold gold1] [cyan]entered New queue[/cyan] \n")
 
     def move_new_ready(self):
-        ready_processes = [process for process in self.new.queue if int(
-            process.arrivalTime) + 1 <= self.clock]
+        ready_processes = [process for process in self.new.queue if int(process.arrivalTime) + 1 <= self.clock]
         for process in ready_processes:
             self.message.append(
                 f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{process.pid}[/bold gold1] [bold green]{process.get_current_burst_time()}[/bold green]] [cyan]entered ready queue[/cyan] \n")
             self.ready.addPCB(process)
             self.new.queue.remove(process)
 
+    def move_new_ready_mlfq(self):
+        ready_processes = [process for process in self.new.queue if int(process.arrivalTime) + 1 <= self.clock]
+        for process in ready_processes:
+            burst_time = process.currentBrust
+
+            # Dynamically find the appropriate queue based on burst time
+            for index, queue_info in enumerate(self.ready.queue):
+                if burst_time <= queue_info["quantum"]:
+                    queue_info['queue'].append(process)
+                    print(f"Process {process.pid} moved to Queue {index + 1} (Priority {queue_info['priority']})")
+                    break  
+                
+            self.new.queue.remove(process)
 
     def ready_to_running(self):
         i = 1
@@ -100,7 +115,6 @@ class BaseClass:
                 self.time_slice = self.time_Slice_Copy
                 job = self.ready.removePCB()
 
-                print("burst_types-->",job.burst_types)
                 if job.burst_types == "CPU":
                     cpu.load_job(job)
                     # self.message.append(

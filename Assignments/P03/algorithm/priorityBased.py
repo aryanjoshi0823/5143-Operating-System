@@ -11,6 +11,7 @@ class PriorityBased(BaseClass):
         self.speed = speed
 
     def run_algorithm(self):
+        print(self.time_Slice)
         self.session_init()
         with Live(
             UI_Layout(

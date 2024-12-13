@@ -5,11 +5,11 @@ def getConfig(client_id):
     return {
         "client_id": client_id,
         "min_jobs": 5,
-        "max_jobs": 20,
+        "max_jobs": 5,
         "min_bursts": 10,
-        "max_bursts": 50,
+        "max_bursts": 30,
         "min_job_interval": 1,
-        "max_job_interval": 5,
+        "max_job_interval": 2,
         "burst_type_ratio": 0.5,
         "min_cpu_burst_interval": 15,
         "max_cpu_burst_interval": 50,
@@ -17,7 +17,6 @@ def getConfig(client_id):
         "max_io_burst_interval": 70,
         "min_ts_interval": 5,
         "max_ts_interval": 5,
-        "prioritys": [1,2,3,4,5],
         "priority_levels": [1, 2, 3, 4, 5] 
     }
 

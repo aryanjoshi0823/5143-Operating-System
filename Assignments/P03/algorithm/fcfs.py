@@ -8,7 +8,6 @@ class FCFS(BaseClass):
 
     def __init__(self, cpu_count, io_count, time_slice, algorithm_type, speed):  
         super().__init__(cpu_count, io_count, time_slice, algorithm_type)
-        self.speed = speed
 
     def run_algorithm(self):
         self.session_init()
