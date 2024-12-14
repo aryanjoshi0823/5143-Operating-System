@@ -1,6 +1,6 @@
 from utils.api import *
 from base.baseClass import BaseClass
-from utils.rich_print import UI_Layout
+from utils.rich_print import UI_Layout,OverallStat
 from rich.live import Live
 import time
 
@@ -54,14 +54,6 @@ class PriorityBased(BaseClass):
                 i = 1          
                 for cpu in self.running:
                     if not cpu.is_idle:
-                        """ get current CPU brust 
-                            Decrement time for that brust 
-                            Add excution time for cal runninng time
-                            check time_silce :   "Job {cpu.runningPCB.pid}: preempted"")
-                            and move to ready stat 
-                            if all brust compelted so move to terminate 
-                            else run wait and IO
-                        """
                         cpu.increment_execution_time()
                         cpu.current_job.decrement_burst_time()
                         self.message.append(
@@ -102,8 +94,6 @@ class PriorityBased(BaseClass):
                                     self.total_iwt += complete_job.IOWaitTime
                                     self.message.append(
                                         f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered Exit queue{i}[/cyan] \n")
-                                    # self.write_stat(
-                                    #     (f'{complete_job.pid},{complete_job.arrivalTime},{complete_job.TurnAroundTime},{complete_job.CPUWaitTime},{complete_job.IOWaitTime}\n'))
                                     cpu.set_idle()
                     i += 1
 
@@ -175,5 +165,9 @@ class PriorityBased(BaseClass):
                         self.algo_type
                     )
                 )
+        ATAT, ARWT, AIWT, cpu_util, io_util = self.calculate_overall_statistics()
+
+        overall_stats = OverallStat(ATAT, ARWT, AIWT, cpu_util, io_util)
+        overall_stats.display_table()
 
 

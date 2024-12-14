@@ -40,25 +40,6 @@ class Queue:
 
     def emptyq(self):
         self.queue = []
-    
-    def get_pcb_by_id(self, pid):
-        """
-        Retrieve a PCB by job ID.
-        """
-        for pcb in self.queue:
-            if pcb.pid == pid:
-                return pcb
-        return None
-
-    def sort_by_priority(self):
-        # Sort the PCB objects in the queue based on their priority
-        self.queue.sort(key=lambda pcb: pcb.priority)
-
-    def returnPriority(self):
-        if len(self.queue) > 0:
-            return self.queue[0].priority[1]
-        else:
-            return 10
 
 
 class NewQueue(Queue):
@@ -86,6 +67,7 @@ class ReadyQueue(Queue):
             for p in queue_info['queue']:
                 p.CPUWaitTime += 1
                 p.CPUWaitTime_cpy += 1
+                p.starvation_counter += 1 
 
 
 

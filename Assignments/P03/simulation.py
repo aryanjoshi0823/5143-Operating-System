@@ -98,9 +98,9 @@ if __name__ == '__main__':
             parsed_args['type'],
             parsed_args['cpus'],
             parsed_args['ios'],
-            parsed_args['timeslice'],
+            parsed_args.get('timeslice', None),
             parsed_args['speed'], 
-            parsed_args['levels'], 
+            parsed_args.get('levels', None)
         )
 
         # Run the scheduler if it's valid

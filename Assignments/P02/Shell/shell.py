@@ -169,7 +169,8 @@ if __name__ == "__main__":
                         cmd_x = cmds_from_history_vlu(each_commands.strip())
 
                         if cmd_x["status_code"]=="200":
-                            if cmd_x and cmd_x.split()[0].strip() == "ls":
+                            print(cmd_x)
+                            if cmd_x and cmd_x["data"].strip().split()[0] == "ls":
                                 captured_output = "ls"
 
                             each_commands = cmd_x["data"]

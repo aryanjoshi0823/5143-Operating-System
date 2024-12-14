@@ -1,6 +1,6 @@
 from utils.api import *
 from base.baseClass import BaseClass
-from utils.rich_print import UI_Layout
+from utils.rich_print_mlfq import UI_Layout,OverallStat
 from rich.live import Live
 from utils.queue import ReadyQueue
 from collections import deque
@@ -49,14 +49,14 @@ class MLFQ(BaseClass):
 
                 self.fetch_job()
                 self.move_new_ready_mlfq()
-
+                self.ready.increment_CPUWaitTime_mlfq()
+                self.handle_starvation()
                 self.ready_to_running_mlfq()
 
                 i = 1          
                 for cpu in self.running:
                     if not cpu.is_idle:
                         cpu.increment_execution_time() 
-
                         if self.clock_tick_count <= cpu.current_job.queue_time_slice:
                             cpu.current_job.decrement_burst_time()
                             self.message.append(
@@ -82,8 +82,9 @@ class MLFQ(BaseClass):
                                             if complete_job.currentBrust <= queue_info["quantum"]:
                                                 complete_job.queue_time_slice = queue_info["quantum"]
                                                 queue_info['queue'].append(complete_job)
+                                                self.ready.increment_CPUWaitTime_mlfq()
                                                 self.message.append(
-                                                    f"from cpu [green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue {index + 1}[/cyan] \n")
+                                                    f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue {index + 1}[/cyan] \n")
                                                 inserted_cpu_ready = True
                                                 break 
 
@@ -91,10 +92,9 @@ class MLFQ(BaseClass):
                                         if not inserted_cpu_ready:
                                             complete_job.queue_time_slice = self.ready.queue[-1]["quantum"]
                                             self.ready.queue[-1]['queue'].append(complete_job)
+                                            self.ready.increment_CPUWaitTime_mlfq()
                                             self.message.append(
-                                                f"from not inserted queue [green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue (default to last level)[/cyan] \n")
-
-                                        self.ready.increment_CPUWaitTime_mlfq()
+                                                f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue (default to last level)[/cyan] \n")
                                         cpu.set_idle()
 
                                     elif burst_type == "IO":
@@ -120,18 +120,17 @@ class MLFQ(BaseClass):
                             for index, queue_info in enumerate(self.ready.queue):
                                 if index + 1 < len(self.ready.queue):
                                     self.ready.queue[index + 1]['queue'].append(cpu.current_job)
+                                    self.ready.increment_CPUWaitTime_mlfq()
                                     self.message.append(
-                                        f"from time slice exceed [green]At time: {self.clock} [/green]job [bold gold1][pid_{cpu.current_job.pid}[/bold gold1] [bold green]{cpu.current_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue {index + 1}[/cyan] \n")
+                                        f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{cpu.current_job.pid}[/bold gold1] [bold green]{cpu.current_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue {index + 1}[/cyan] \n")
                                     break 
                                 else:
                                     queue_info['queue'].append(cpu.current_job)
+                                    self.ready.increment_CPUWaitTime_mlfq()
 
-                            self.ready.increment_CPUWaitTime_mlfq()
                             self.clock_tick_count = 0
                             cpu.set_idle() 
                         i+=1
-
-
 
 
                 if (len(self.wait.queue) > 0):
@@ -164,8 +163,9 @@ class MLFQ(BaseClass):
                                         if complete_job.currentBrust <= queue_info["quantum"]:
                                             complete_job.queue_time_slice = queue_info["quantum"]
                                             queue_info['queue'].append(complete_job)
+                                            self.ready.increment_CPUWaitTime_mlfq()
                                             self.message.append(
-                                                f"from cpu [green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue {index + 1}[/cyan] \n")
+                                                f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue {index + 1}[/cyan] \n")
                                             inserted_io_ready = True
                                             break 
 
@@ -173,10 +173,10 @@ class MLFQ(BaseClass):
                                     if not inserted_io_ready:
                                         complete_job.queue_time_slice = self.ready.queue[-1]["quantum"]
                                         self.ready.queue[-1]['queue'].append(complete_job)
+                                        self.ready.increment_CPUWaitTime_mlfq()
                                         self.message.append(
                                             f"from not inserted queue [green]At time: {self.clock} [/green]job [bold gold1][pid_{complete_job.pid}[/bold gold1] [bold green]{complete_job.get_current_burst_time()}[/bold green]] [cyan]entered ready queue (default to last level)[/cyan] \n")
 
-                                    self.ready.increment_CPUWaitTime_mlfq()
                                     io.set_idle()
 
                                 elif burst_type == "IO":
@@ -200,6 +200,7 @@ class MLFQ(BaseClass):
 
                 self.clock += 1
                 self.clock_tick_count +=1
+                self.total_simulation_time +=1
                 live.update(
                     UI_Layout(
                         self.new.queue,
@@ -217,5 +218,9 @@ class MLFQ(BaseClass):
                         self.algo_type
                     )
                 )
+        
+        ATAT, ARWT, AIWT, cpu_util, io_util = self.calculate_overall_statistics()
 
+        overall_stats = OverallStat(ATAT, ARWT, AIWT, cpu_util, io_util)
+        overall_stats.display_table()
                 

@@ -180,7 +180,7 @@ def tail(**kwargs):
                     else:
                         raise Exception(rfd["message"])
 
-            elif input and params == []:
+            elif input:
                 filename = input.splitlines()
                 total_lines_count = len(filename)
                 length = 2 if total_lines_count < 5 else length
@@ -382,7 +382,7 @@ def rm(**kwargs):
 
                 rfd = delete_file(params[0].strip(),config['cwdid'])
                 if rfd["status_code"] == '200' and rfd["data"] is not None:
-                    print("File Deleted.")
+                    pass
                 else:
                     print(rfd["message"] )  
                 

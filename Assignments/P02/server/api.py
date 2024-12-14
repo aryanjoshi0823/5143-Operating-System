@@ -107,12 +107,8 @@ async def get_id(path: str, curr_dir_id: int = 0):
     
     Args:
         path (str): The path to find the pid of.
-        current_dir_pid (int, optional): The pid of the current directory (used for relative paths).
+        current_dir (int): The pid of the current directory (used for relative paths).
                                         Defaults to 1 (root directory).
-     For instance,
-        1. /python_code/ShapeModules/Point.pyc  --> already under root directory   
-        2. Point.pyc only
-        3. ShapeModules only etc.
     """
 
     if path == "/":
@@ -583,6 +579,3 @@ async def delete_file(name: str, id: int):
 if __name__ == "__main__":
     uvicorn.run("api:app", host="127.0.0.1", port=8080, log_level="debug", reload=True)
 
-
-# converted_object = ast.literal_eval(string_representation)
-# print("Converted back to object:", converted_object)

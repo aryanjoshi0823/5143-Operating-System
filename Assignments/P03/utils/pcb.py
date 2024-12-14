@@ -31,6 +31,7 @@ class PCB:
         self.IOWaitTime = 0           # Time in wait queue
         self.TurnAroundTime = 0       # Time from start to finish
         self.queue_time_slice = 0 
+        self.starvation_counter = 0 
 
 
 
@@ -40,14 +41,3 @@ class PCB:
     def get_current_burst_time(self):
         return self.currentBrust
 
-    def setPriority(self):
-        current_priority_index = self.priority_order.index(self.priority) + 1
-        if current_priority_index <= len(self.priority_order):
-            if current_priority_index == 2:
-                if self.CPUWaitTime_cpy >= 6:
-                    self.priority = "p1"
-                    self.CPUWaitTime_cpy = 0
-            elif current_priority_index > 2:
-                if self.CPUWaitTime_cpy >= (current_priority_index + 5) * 2:
-                    self.priority = self.priority_order[current_priority_index - 2]
-                    self.CPUWaitTime_cpy = 0

@@ -4,6 +4,6 @@ pydantic
 Pigments
 requests
 uvicorn
-pretty table
+prettytable
 datetime
 

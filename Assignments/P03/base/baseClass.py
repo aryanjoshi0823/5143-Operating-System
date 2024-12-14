@@ -4,7 +4,6 @@ from utils.pcb import PCB
 from utils.api import *
 
 from utils.queue import NewQueue, ReadyQueue, WaitQueue, TerminatedQueue
-##from ui.ui_print import OverallStat
 from datetime import datetime
 
 import os
@@ -32,8 +31,9 @@ class BaseClass:
 
         self.running = self.create_cpus()
         self.io = self.create_io()
-        self.total_processes = self.ready.length()
 
+        self.total_simulation_time = 0
+        self.total_processes = 0
         self.clock_tick_count = 0
         self.terminated_process_count = 0
         self.total_tat = 0
@@ -44,9 +44,6 @@ class BaseClass:
 
         self.message = []
 
-        self.cycle_count = 0
-        self.toggle_priority_adjustment = False 
-
 
     def create_cpus(self):
         return [CPU() for _ in range(self.cpu_Count)]
@@ -54,14 +51,6 @@ class BaseClass:
     def create_io(self):
         return [IO() for _ in range(self.io_Count)]
 
-    def __str__(self):
-        s = ""
-        s += "datfile: " + self.datfile + "\n"
-        s += "new queue:\n" + "".join(str(pcb)
-                                      for pcb in self.new.queue) + "\n"
-        s += "wait:\n" + "".join(str(pcb) for pcb in self.wait.queue) + "\n"
-        return s
-    
     def time_increment(self):
         self.clock += 1
 
@@ -81,7 +70,8 @@ class BaseClass:
                     if burst and burst['success']:
                         burst_type = burst['data']['burst_type']
                         burst_duration = int(burst['data']['duration'])
-                        self.new.addPCB(PCB(job["job_id"], burst_duration, burst_type, job["arrival_time"], job["priority"]))  
+                        self.new.addPCB(PCB(job["job_id"], burst_duration, burst_type, job["arrival_time"], job["priority"])) 
+                        self.total_processes += 1
                         self.message.append(
                             f"[green]At time: {self.clock} [/green]job [bold gold1]pid_{job_id}[/bold gold1] [cyan]entered New queue[/cyan] \n")
 
@@ -118,7 +108,6 @@ class BaseClass:
 
             self.new.queue.remove(process)
         
-
     def ready_to_running_mlfq(self):
         i = 1
         for cpu in self.running:
@@ -128,6 +117,7 @@ class BaseClass:
                     if queue_info['queue']:
                         job = queue_info['queue'].popleft()
                         if job.burst_types == "CPU":
+                            job.starvation_counter = 0 
                             cpu.load_job(job)
                             self.message.append(
                                 f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{cpu.current_job.pid}[/bold gold1] [bold green]{cpu.current_job.get_current_burst_time()}[/bold green]] [cyan]obtained ready cpu_{i}[/cyan] \n")
@@ -144,9 +134,6 @@ class BaseClass:
 
                 if job.burst_types == "CPU":
                     cpu.load_job(job)
-                    # self.message.append(
-                    #     f"[green]At time: {self.clock} [/green]job [bold gold1][pid_{cpu.current_job.pid}[/bold gold1] [bold green]{cpu.current_job.get_current_burst_time()}[/bold green]] [cyan]obtained CPU_{i}[/cyan] \n")
-
             i += 1
 
     def waiting_to_io(self):
@@ -170,3 +157,49 @@ class BaseClass:
                         f"[red]Job [pid_{cpu.current_job.pid}] preempted by [pid_{highest_priority_job.pid}][/red]"
                     )
                     cpu.set_idle()
+
+    def calculate_overall_statistics(self):
+        """Calculate and return overall statistics at the end of the simulation."""
+        # Calculate metrics
+        simulation_time = self.total_simulation_time
+        terminated_queue = self.terminated
+        cpus = self.running
+        ios = self.io
+
+        total_tat = sum(job.TurnAroundTime for job in terminated_queue.queue)
+        total_rwt = sum(job.CPUWaitTime for job in terminated_queue.queue)
+        total_iwt = sum(job.IOWaitTime for job in terminated_queue.queue)
+        num_processes = len(terminated_queue.queue)
+
+        total_cpu_busy_time = sum(cpu.total_execution_time for cpu in cpus)
+        total_io_busy_time = sum(io.total_execution_time for io in ios)
+
+        ATAT = total_tat / num_processes if num_processes > 0 else 0
+        ARWT = total_rwt / num_processes if num_processes > 0 else 0
+        AIWT = total_iwt / num_processes if num_processes > 0 else 0
+        cpu_utilization = (total_cpu_busy_time / simulation_time) * 100 if simulation_time > 0 else 0
+        io_utilization = (total_io_busy_time / simulation_time) * 100 if simulation_time > 0 else 0
+
+        # Return metrics
+        return ATAT, ARWT, AIWT, cpu_utilization, io_utilization
+
+    def handle_starvation(self):
+        """
+        Checks for starvation in the lower-priority queues and promotes jobs with starvation_counter > 20.
+        """
+        for i in range(1, len(self.ready.queue)):  # Start from the second queue (index 1)
+            queue_info = self.ready.queue[i]
+            for job in list(queue_info['queue']):  
+                if job.starvation_counter > 20:  
+
+                    queue_info['queue'].remove(job)
+                    job.starvation_counter = 0  
+
+                    # Promote the job to the higher-priority queue
+                    self.ready.queue[i - 1]['queue'].append(job)
+                    job.queue_time_slice = self.ready.queue[i - 1]['quantum']  # Update time slice
+                    self.message.append(
+                        f"[green]At time: {self.clock}[/green]job [bold gold1][pid_{job.pid}[/bold gold1][bold green]{job.get_current_burst_time()}[/bold green]] [cyan]promoted to queue {i}[/cyan] \n"
+                    )
+ 
+

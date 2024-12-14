@@ -25,8 +25,8 @@ def sort(**kwargs):
 
             if params and input == []:
                 for param in params:
-                    first_params = param.strip() 
-                    rfd = read_file_data(first_params,config['cwdid'])
+                    vlu_params = param.strip() 
+                    rfd = read_file_data(vlu_params,config['cwdid'])
 
                     if rfd["status_code"] == '200' and rfd["data"] is not None:
                         data = data + rfd["data"]

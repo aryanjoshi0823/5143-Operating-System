@@ -48,7 +48,7 @@ def convert_mode_to_perm(mode):
     Translates the given mode (numeric string) to the binary permission
     bits and applies it to the current permission settings.
     """
-    # Convert the mode to a string of 3 digits (e.g., 755 -> '755')
+    # Convert the mode to a string of 2 digits (e.g., 75 -> '75')
     mode_str = str(mode).zfill(2)
 
     # Break mode into user, group
