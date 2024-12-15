@@ -48,7 +48,6 @@ class FCFS(BaseClass):
                 i = 1          
                 for cpu in self.running:
                     if not cpu.is_idle:
-                        cpu.current_job.sta
                         cpu.increment_execution_time()
                         cpu.current_job.decrement_burst_time()
                         self.message.append(

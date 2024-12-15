@@ -155,6 +155,7 @@ class RoundRobin(BaseClass):
                 #Update live display
                 self.clock += 1
                 self.time_Slice -= 1
+                self.total_simulation_time += 1
                 live.update(
                     UI_Layout(
                         self.new.queue,

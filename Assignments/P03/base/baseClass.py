@@ -170,9 +170,13 @@ class BaseClass:
         total_rwt = sum(job.CPUWaitTime for job in terminated_queue.queue)
         total_iwt = sum(job.IOWaitTime for job in terminated_queue.queue)
         num_processes = len(terminated_queue.queue)
+        print("num_processes-->",num_processes)
+        print("sim time -->",simulation_time)
 
         total_cpu_busy_time = sum(cpu.total_execution_time for cpu in cpus)
         total_io_busy_time = sum(io.total_execution_time for io in ios)
+        print("total_cpu_busy_time-->",total_cpu_busy_time)
+        print("total_io_busy_time-->",total_io_busy_time)
 
         ATAT = total_tat / num_processes if num_processes > 0 else 0
         ARWT = total_rwt / num_processes if num_processes > 0 else 0

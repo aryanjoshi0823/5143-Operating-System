@@ -148,6 +148,8 @@ class PriorityBased(BaseClass):
                     j += 1
                 # Update live display
                 self.clock += 1
+                self.clock_tick_count +=1
+                self.total_simulation_time += 1
                 live.update(
                     UI_Layout(
                         self.new.queue,
